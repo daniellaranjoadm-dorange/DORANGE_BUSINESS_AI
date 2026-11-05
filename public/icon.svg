@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E5D1A6" />
+      <stop offset="50%" stop-color="#C5A46D" />
+      <stop offset="100%" stop-color="#9E7D42" />
+    </linearGradient>
+  </defs>
+  <!-- Fundo corporativo grafite -->
+  <rect width="512" height="512" rx="112" fill="#17191F" />
+  <rect x="24" y="24" width="464" height="464" rx="88" fill="none" stroke="#C5A46D" stroke-width="2" opacity="0.25" />
+  
+  <!-- Símbolo estilizado sutil em formato de gota/lâmina de unha lapidada -->
+  <g transform="translate(256, 230)">
+    <path d="M 0 -90 C -55 -90 -85 -30 -85 30 C -85 90 0 135 0 135 C 0 135 85 90 85 30 C 85 -30 55 -90 0 -90 Z" fill="none" stroke="url(#goldGrad)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="0" cy="20" r="18" fill="url(#goldGrad)" />
+  </g>
+
+  <!-- Tipografia institucional limpa -->
+  <text x="256" y="435" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="800" font-size="34" fill="#FFFFFF" text-anchor="middle" letter-spacing="6">D'OR@NGE</text>
+  <text x="256" y="465" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="600" font-size="14" fill="#C5A46D" text-anchor="middle" letter-spacing="8">BUSINESS AI</text>
+</svg>

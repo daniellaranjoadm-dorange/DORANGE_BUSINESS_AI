@@ -1,0 +1,7 @@
+import React, {useState} from 'react';
+import {useApp} from '../context/AppContext';
+import {OnboardingModal} from './OnboardingModal';
+export function LoginView(){
+  const {login,setIsOnboardingOpen}=useApp();const [email,setEmail]=useState('');const [password,setPassword]=useState('');const [error,setError]=useState('');const [busy,setBusy]=useState(false);
+  return <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6"><div className="bg-white border rounded-2xl p-8 w-full max-w-md space-y-5"><h1 className="text-xl font-bold">D'OR@NGE BUSINESS AI</h1><form className="space-y-4" onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{await login(email,password)}catch(e:any){setError(e.message)}finally{setBusy(false)}}}><label className="block">E-mail<input className="block w-full border rounded p-2" type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)}/></label><label className="block">Senha<input className="block w-full border rounded p-2" type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<p role="alert">{error}</p>}<button className="bg-stone-900 text-white rounded p-3 w-full" disabled={busy}>{busy?'Entrando…':'Entrar'}</button></form><button onClick={()=>setIsOnboardingOpen(true)}>Cadastrar meu estabelecimento</button><p className="text-xs text-stone-500">Contas anteriores precisam ativar a senha com o administrador por canal verificado.</p></div><OnboardingModal/></main>;
+}

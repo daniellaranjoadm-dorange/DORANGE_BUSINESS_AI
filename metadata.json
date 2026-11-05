@@ -1,0 +1,6 @@
+{
+  "name": "D'OR@NGE BUSINESS AI",
+  "description": "Plataforma SaaS White-Label MultiBusiness de Agendamento Inteligente, Gestão e IA para Manicures, Barbearias, Salões, Estética e Bem-Estar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

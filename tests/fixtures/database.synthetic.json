@@ -1,0 +1,363 @@
+{
+  "tenants": [
+    {
+      "id": "tenant-1",
+      "name": "Responsável Fictício 1",
+      "tradeName": "Negócio Fictício 1",
+      "slug": "negocio-ficticio-1",
+      "document": "",
+      "documentType": "CPF",
+      "email": "owner1@example.invalid",
+      "phone": "",
+      "whatsapp": "",
+      "city": "Cidade Exemplo",
+      "state": "SP",
+      "serviceType": "both",
+      "businessSegment": "nails",
+      "primaryColor": "#17191f",
+      "planId": "pro",
+      "status": "active",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "businessHours": {
+        "0": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "1": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "2": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "3": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "4": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "5": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "6": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        }
+      },
+      "bufferBetweenAppointmentsMinutes": 0,
+      "whatsappMode": "personal",
+      "loyaltyProgramEnabled": false,
+      "loyaltyPointsPerReal": 1,
+      "loyaltyRewardThreshold": 100,
+      "loyaltyRewardDescription": "Benefício fictício"
+    },
+    {
+      "id": "tenant-2",
+      "name": "Responsável Fictício 2",
+      "tradeName": "Negócio Fictício 2",
+      "slug": "negocio-ficticio-2",
+      "document": "",
+      "documentType": "CPF",
+      "email": "owner2@example.invalid",
+      "phone": "",
+      "whatsapp": "",
+      "city": "Cidade Exemplo",
+      "state": "SP",
+      "serviceType": "both",
+      "businessSegment": "barber",
+      "primaryColor": "#17191f",
+      "planId": "pro",
+      "status": "active",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "businessHours": {
+        "0": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "1": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "2": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "3": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "4": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "5": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "6": {
+          "open": true,
+          "start": "08:00",
+          "end": "20:00"
+        }
+      },
+      "bufferBetweenAppointmentsMinutes": 0,
+      "whatsappMode": "personal",
+      "loyaltyProgramEnabled": false,
+      "loyaltyPointsPerReal": 1,
+      "loyaltyRewardThreshold": 100,
+      "loyaltyRewardDescription": "Benefício fictício"
+    }
+  ],
+  "users": [
+    {
+      "id": "user-owner-1",
+      "tenantId": "tenant-1",
+      "name": "Responsável Fictício 1",
+      "email": "owner1@example.invalid",
+      "role": "owner",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "user-owner-2",
+      "tenantId": "tenant-2",
+      "name": "Responsável Fictício 2",
+      "email": "owner2@example.invalid",
+      "role": "owner",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "user-professional-1",
+      "tenantId": "tenant-1",
+      "name": "Profissional Fictício 1",
+      "email": "professional1@example.invalid",
+      "role": "professional",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "user-admin",
+      "name": "Administrador Fictício",
+      "email": "admin@example.invalid",
+      "role": "superadmin",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "professionals": [
+    {
+      "id": "prof-1",
+      "tenantId": "tenant-1",
+      "name": "Profissional Fictício 1",
+      "role": "Profissional",
+      "email": "professional1@example.invalid",
+      "phone": "",
+      "services": [
+        "serv-1"
+      ],
+      "commissionRate": 50,
+      "active": true,
+      "schedule": {
+        "0": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "1": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "2": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "3": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "4": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "5": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "6": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        }
+      }
+    },
+    {
+      "id": "prof-2",
+      "tenantId": "tenant-2",
+      "name": "Profissional Fictício 2",
+      "role": "Profissional",
+      "email": "professional2@example.invalid",
+      "phone": "",
+      "services": [
+        "serv-2"
+      ],
+      "commissionRate": 50,
+      "active": true,
+      "schedule": {
+        "0": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "1": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "2": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "3": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "4": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "5": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        },
+        "6": {
+          "active": true,
+          "start": "08:00",
+          "end": "20:00"
+        }
+      }
+    }
+  ],
+  "services": [
+    {
+      "id": "serv-1",
+      "tenantId": "tenant-1",
+      "name": "Serviço Fictício 1",
+      "category": "Serviços",
+      "description": "Exemplo sintético de teste",
+      "durationMinutes": 30,
+      "price": 50,
+      "costBRL": 5,
+      "estimatedMarginPercent": 90,
+      "active": true,
+      "professionalIds": [
+        "prof-1"
+      ],
+      "materialsNeeded": [],
+      "itemType": "service"
+    },
+    {
+      "id": "serv-2",
+      "tenantId": "tenant-2",
+      "name": "Serviço Fictício 2",
+      "category": "Serviços",
+      "description": "Exemplo sintético de teste",
+      "durationMinutes": 30,
+      "price": 50,
+      "costBRL": 5,
+      "estimatedMarginPercent": 90,
+      "active": true,
+      "professionalIds": [
+        "prof-2"
+      ],
+      "materialsNeeded": [],
+      "itemType": "service"
+    }
+  ],
+  "customers": [
+    {
+      "id": "customer-1",
+      "tenantId": "tenant-1",
+      "name": "Cliente Fictício",
+      "phone": "00000000000",
+      "email": "customer@example.invalid",
+      "notes": "Exemplo sintético",
+      "loyaltyPoints": 0,
+      "marketingConsent": false,
+      "totalSpent": 0,
+      "appointmentsCount": 1,
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "appointments": [
+    {
+      "id": "appointment-1",
+      "tenantId": "tenant-1",
+      "serviceId": "serv-1",
+      "serviceName": "Serviço Fictício 1",
+      "professionalId": "prof-1",
+      "professionalName": "Profissional Fictício 1",
+      "customerId": "customer-1",
+      "customerName": "Cliente Fictício",
+      "customerPhone": "00000000000",
+      "date": "2026-01-05",
+      "time": "09:00",
+      "durationMinutes": 30,
+      "price": 50,
+      "status": "confirmed",
+      "notes": "Exemplo sintético",
+      "isDomicile": false,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "paymentStatus": "pending"
+    }
+  ],
+  "financialTransactions": [],
+  "inventory": [
+    {
+      "id": "inv-1",
+      "tenantId": "tenant-1",
+      "name": "Insumo Fictício",
+      "category": "Outros",
+      "unit": "un",
+      "quantity": 10,
+      "minQuantity": 2,
+      "unitCost": 5,
+      "supplier": "Fornecedor Fictício"
+    }
+  ],
+  "marketingPosts": [],
+  "connectedAccounts": [],
+  "portfolio": [],
+  "packagePlans": [],
+  "customerPackages": [],
+  "auditLogs": [],
+  "subscriptionPlans": [],
+  "physicalResources": [],
+  "blockedTimes": [],
+  "waitingList": [],
+  "inventoryMovements": [],
+  "aiUsage": [],
+  "baseCatalog": []
+}
