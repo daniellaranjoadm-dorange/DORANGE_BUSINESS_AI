@@ -1,4 +1,4 @@
-﻿param([ValidateSet('Start','Access','Stop')][string]$Action='Start')
+param([ValidateSet('Start','Access','Stop')][string]$Action='Start')
 $ErrorActionPreference='Stop'
 $project=Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $project
@@ -41,6 +41,10 @@ function Start-LocalApp {
   }
  }
  if(!$live){
+  $occupied=@(Get-NetTCPConnection -LocalPort $cfg.port -State Listen -ErrorAction SilentlyContinue)
+  if($occupied.Count -gt 0){
+   throw "Porta $($cfg.port) ocupada pelo processo $($occupied[0].OwningProcess). Nenhum novo servidor foi iniciado."
+  }
   $p=Start-Process -FilePath $node -ArgumentList @('--import','tsx','scripts/start-local.ts') -WorkingDirectory $project -WindowStyle Hidden -RedirectStandardOutput (Join-Path $runtime 'server.stdout.log') -RedirectStandardError (Join-Path $runtime 'server.stderr.log') -PassThru
   [IO.File]::WriteAllText($pidFile,[string]$p.Id)
  }
