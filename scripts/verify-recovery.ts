@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import { auditIntegrity } from '../server/integrity.js';
+const file = process.argv[2];
+if (!file) throw new Error('Informe o caminho do database.json privado.');
+const raw = fs.readFileSync(file);
+const data = JSON.parse(raw.toString('utf8'));
+const required = ['tenants','users','professionals','services','customers','appointments','financialTransactions','inventory'];
+if (required.some(key => !Array.isArray(data[key]))) throw new Error('Coleção obrigatória ausente.');
+const issues = auditIntegrity(data);
+console.log(JSON.stringify({sha256:crypto.createHash('sha256').update(raw).digest('hex'),violations:issues.length,counts:Object.fromEntries(Object.entries(data).filter(([,v])=>Array.isArray(v)).map(([k,v])=>[k,(v as any[]).length]))},null,2));
+if (issues.length) process.exitCode = 1;

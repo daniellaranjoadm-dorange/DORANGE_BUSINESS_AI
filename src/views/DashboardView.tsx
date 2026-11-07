@@ -27,6 +27,8 @@ import { CatalogueImportModal } from '../components/CatalogueImportModal';
 import { MarketBenchmarkModal } from '../components/MarketBenchmarkModal';
 import { OnboardingChecklist } from '../components/OnboardingChecklist';
 import { Appointment } from '../types';
+import { businessInsights, localDateKey } from '../utils/businessInsights';
+import { BusinessPriorities } from '../components/BusinessPriorities';
 
 export const DashboardView: React.FC = () => {
   const { 
@@ -49,7 +51,8 @@ export const DashboardView: React.FC = () => {
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState<boolean>(false);
 
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = localDateKey(today);
+  const insights=businessInsights(currentTenant?.id||'',appointments,financialTransactions,inventory,today);
 
   // Data por extenso em Português
   const formattedDateExtenso = today.toLocaleDateString('pt-BR', {
@@ -59,41 +62,24 @@ export const DashboardView: React.FC = () => {
     year: 'numeric'
   });
 
-  const todayAppointments = appointments.filter((a) => a.date === todayStr);
+  const todayAppointments = insights.todayAppointments;
   const confirmedToday = todayAppointments.filter((a) => a.status === 'confirmed');
   const pendingToday = todayAppointments.filter((a) => a.status === 'pending');
   const completedToday = todayAppointments.filter((a) => a.status === 'completed');
-  const cancelledCount = appointments.filter((a) => a.status === 'cancelled').length;
-
-  // Horários disponíveis hoje (vagas ociosas)
-  const standardSlots = ['09:00', '10:30', '13:30', '15:00', '16:30', '18:00'];
-  const bookedTimes = todayAppointments.map(a => a.time);
-  const freeSlotsToday = standardSlots.filter(s => !bookedTimes.includes(s));
-
-  // Métricas financeiras e operacionais 100% REAIS (sem valores arbitrários)
-  const totalMonthRevenue = financialTransactions
-    .filter((f) => f.type === 'income' && f.status === 'paid')
-    .reduce((acc, f) => acc + f.amount, 0);
-
-  const totalExpenses = financialTransactions
-    .filter((f) => f.type === 'expense')
-    .reduce((acc, f) => acc + f.amount, 0);
-
-  const netBalance = totalMonthRevenue - totalExpenses;
-
-  const pendingRevenue = appointments
-    .filter((a) => a.status !== 'cancelled' && a.paymentStatus !== 'paid')
-    .reduce((acc, a) => acc + a.price, 0);
-
-  const completedCount = appointments.filter((a) => a.status === 'completed').length;
-  const ticketMedio = completedCount > 0 ? totalMonthRevenue / completedCount : 0;
+  const cancelledCount = insights.cancelled;
+  const totalMonthRevenue=insights.revenue;
+  const totalExpenses=insights.expenses;
+  const netBalance=insights.net;
+  const pendingRevenue=insights.futureUnpaid;
+  const completedCount=insights.completedCount;
+  const ticketMedio=insights.averageTicket;
 
   // Itens com estoque baixo
-  const lowStockItems = inventory.filter((i) => i.quantity <= i.minQuantity);
+  const lowStockItems = insights.lowStock;
 
   // Top Serviços mais populares calculados a partir de agendamentos reais
   const serviceSalesCount = appointments
-    .filter((a) => a.status === 'completed' || a.status === 'confirmed')
+    .filter((a) => a.tenantId===currentTenant?.id && a.status === 'completed')
     .reduce((acc: Record<string, number>, a) => {
       acc[a.serviceName] = (acc[a.serviceName] || 0) + 1;
       return acc;
@@ -117,10 +103,10 @@ export const DashboardView: React.FC = () => {
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
-    const dStr = d.toISOString().split('T')[0];
+    const dStr = localDateKey(d);
     const dayLabel = d.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0, 3);
     const amount = financialTransactions
-      .filter((f) => f.type === 'income' && f.status === 'paid' && f.date === dStr)
+      .filter((f) => f.tenantId===currentTenant?.id && f.type === 'income' && f.status === 'paid' && f.date === dStr)
       .reduce((sum, f) => sum + f.amount, 0);
     return { day: dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), date: dStr, amount };
   });
@@ -151,15 +137,15 @@ export const DashboardView: React.FC = () => {
             <span>{formattedDateExtenso}</span>
             <span className="text-stone-300">•</span>
             <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
-              Sincronizado em tempo real
+              Visão do dia
             </span>
           </div>
 
           <h2 className="font-display font-bold text-xl sm:text-2xl text-[#17191F] mt-1 tracking-tight">
-            Seu negócio está operacional hoje.
+            Seu dia, com foco no que importa.
           </h2>
           <p className="text-xs text-[#667085] mt-0.5">
-            Você tem <strong className="text-[#17191F]">{todayAppointments.length} atendimento(s)</strong> agendados e <strong className="text-amber-800">{freeSlotsToday.length} horários vagos</strong> para preenchimento.
+            <strong className="text-[#17191F]">{todayAppointments.length} atendimento(s)</strong> na agenda de hoje. Confira pendências, recebimentos e próximos passos abaixo.
           </p>
         </div>
 
@@ -167,7 +153,7 @@ export const DashboardView: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           <button
             onClick={() => setIsNewAppModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl transition shadow-2xs"
+            className="brand-button flex items-center gap-1.5 px-3.5 py-2 font-bold text-xs rounded-xl transition shadow-2xs"
           >
             <Plus className="w-3.5 h-3.5 text-amber-400" />
             <span>Novo Agendamento</span>
@@ -191,6 +177,8 @@ export const DashboardView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      <BusinessPriorities insights={insights} onConfirm={()=>insights.confirmations.length?setSelectedAppForWhatsApp(insights.confirmations[0]):setActiveTab('calendar')} onCalendar={()=>setActiveTab('calendar')} onFinancial={()=>setActiveTab('financial')} onInventory={()=>setActiveTab('inventory')} />
 
       {/* Checklist de Ativação do Salão com Assistente de IA */}
       <OnboardingChecklist />
@@ -217,56 +205,56 @@ export const DashboardView: React.FC = () => {
         {/* 2. Faturamento Realizado */}
         <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-1">
-            <span className="text-[11px] font-semibold">Receita Liquidada</span>
+            <span className="text-[11px] font-semibold">Recebido no mês</span>
             <DollarSign className="w-3.5 h-3.5 text-emerald-700" />
           </div>
           <div className="font-display font-bold text-xl text-emerald-800 tabular-nums">
             {formatCurrencyBRL(totalMonthRevenue)}
           </div>
           <div className="text-[10px] text-emerald-800 font-medium mt-1">
-            Entradas quitadas
+            Entradas registradas como pagas
           </div>
         </div>
 
         {/* 3. Despesas & Insumos */}
         <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-1">
-            <span className="text-[11px] font-semibold">Despesas do Mês</span>
+            <span className="text-[11px] font-semibold">Pago no mês</span>
             <TrendingUp className="w-3.5 h-3.5 text-rose-600" />
           </div>
           <div className="font-display font-bold text-xl text-rose-700 tabular-nums">
             {formatCurrencyBRL(totalExpenses)}
           </div>
           <div className="text-[10px] text-stone-500 mt-1">
-            Custos operacionais
+            Despesas e comissões pagas
           </div>
         </div>
 
         {/* 4. Resultado Financeiro Líquido */}
         <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-1">
-            <span className="text-[11px] font-semibold">Resultado Líquido</span>
+            <span className="text-[11px] font-semibold">Saldo do mês</span>
             <DollarSign className="w-3.5 h-3.5 text-stone-900" />
           </div>
           <div className={`font-display font-bold text-xl tabular-nums ${netBalance >= 0 ? 'text-stone-900' : 'text-rose-600'}`}>
             {formatCurrencyBRL(netBalance)}
           </div>
           <div className="text-[10px] text-[#667085] mt-1">
-            Receitas - Despesas
+            Entradas menos saídas pagas
           </div>
         </div>
 
-        {/* 5. Receita Prevista */}
+        {/* 5. Agenda a receber */}
         <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-1">
-            <span className="text-[11px] font-semibold">Receita Prevista</span>
+            <span className="text-[11px] font-semibold">Agenda a receber</span>
             <Clock className="w-3.5 h-3.5 text-amber-700" />
           </div>
           <div className="font-display font-bold text-xl text-amber-900 tabular-nums">
             {formatCurrencyBRL(pendingRevenue)}
           </div>
           <div className="text-[10px] text-[#667085] mt-1">
-            A receber nos horários
+            Agenda futura, descontados sinais
           </div>
         </div>
 
@@ -280,21 +268,21 @@ export const DashboardView: React.FC = () => {
             {cancelledCount}
           </div>
           <div className="text-[10px] text-[#667085] mt-1">
-            Total histórico
+            Neste mês
           </div>
         </div>
 
-        {/* 7. Ticket Médio Real */}
+        {/* 7. Ticket de atendimentos Real */}
         <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-1">
-            <span className="text-[11px] font-semibold">Ticket Médio</span>
+            <span className="text-[11px] font-semibold">Ticket de atendimentos</span>
             <BarChart3 className="w-3.5 h-3.5 text-[#667085]" />
           </div>
           <div className="font-display font-bold text-xl text-[#17191F] tabular-nums">
             {completedCount > 0 ? formatCurrencyBRL(ticketMedio) : 'R$ 0,00'}
           </div>
           <div className="text-[10px] text-[#667085] mt-1">
-            {completedCount > 0 ? `${completedCount} concluídos` : 'Sem concluídos'}
+            {completedCount > 0 ? `${completedCount} concluídos neste mês` : 'Sem concluídos'}
           </div>
         </div>
 
@@ -426,7 +414,7 @@ export const DashboardView: React.FC = () => {
             </div>
             <div className="grid grid-cols-7 gap-2 items-end h-24 pt-4">
               {weekDays.map((d) => {
-                const heightPct = Math.max(12, Math.round((d.amount / maxDayAmount) * 100));
+                const heightPct = Math.max(d.amount>0?4:0, Math.round((d.amount / maxDayAmount) * 100));
                 return (
                   <div key={d.day} className="flex flex-col items-center gap-1.5 h-full justify-end">
                     <div
@@ -448,22 +436,10 @@ export const DashboardView: React.FC = () => {
         {/* Coluna 3: Alertas Operacionais, IA & Serviços em Alta */}
         <div className="space-y-4">
           
-          {/* Card Alerta de Vagas & Campanha com IA */}
-          <div className="bg-white rounded-2xl border border-amber-200/80 p-4 shadow-2xs space-y-3 bg-gradient-to-br from-amber-50/40 to-white">
-            <div className="flex items-center gap-2 text-[#17191F] font-bold text-xs">
-              <Sparkles className="w-4 h-4 text-amber-700" />
-              <span>Oportunidade de Ocupação</span>
-            </div>
-            <p className="text-xs text-[#667085] leading-relaxed">
-              Você possui <strong className="text-amber-900">{freeSlotsToday.length} vagas ociosas</strong> hoje. Dispare uma mensagem rápida no WhatsApp para clientes VIP preencherem esses horários.
-            </p>
-            <button
-              onClick={() => setActiveTab('marketing')}
-              className="w-full py-2 px-3 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs transition shadow-2xs flex items-center justify-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Gerar Campanha com IA</span>
-            </button>
+          <div className="brand-soft rounded-2xl p-5 space-y-3">
+            <h3 className="font-semibold text-sm">Faça seu próximo horário acontecer</h3>
+            <p className="text-xs leading-relaxed text-stone-600">Confira a disponibilidade real na agenda e compartilhe seu portal. Você escolhe o público e revisa a mensagem antes de enviar.</p>
+            <button onClick={()=>setActiveTab('calendar')} className="brand-button rounded-xl px-4 py-2.5 text-xs font-semibold w-full">Conferir minha agenda</button>
           </div>
 
           {/* Alerta de Estoque Baixo */}
@@ -546,14 +522,14 @@ export const DashboardView: React.FC = () => {
                 className="p-2 rounded-xl bg-white border border-stone-200 hover:border-amber-400 text-left transition"
               >
                 <span className="font-bold text-[11px] text-[#17191F] block">Importar Catálogo</span>
-                <span className="text-[10px] text-[#667085]">Via texto ou foto</span>
+                <span className="text-[10px] text-[#667085]">Texto ou CSV · sem IA</span>
               </button>
               <button
                 onClick={() => setIsBenchmarkModalOpen(true)}
                 className="p-2 rounded-xl bg-white border border-stone-200 hover:border-amber-400 text-left transition"
               >
-                <span className="font-bold text-[11px] text-[#17191F] block">Preços RS</span>
-                <span className="text-[10px] text-[#667085]">Médias regionais</span>
+                <span className="font-bold text-[11px] text-[#17191F] block">Simular preço</span>
+                <span className="text-[10px] text-[#667085]">Custos e tempo</span>
               </button>
             </div>
           </div>

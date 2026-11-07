@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import { hashPassword } from '../server/passwords.js';
 import {db} from '../server/db.js';
-const email=process.argv[2];
+const email=process.env.DORANGE_OPERATOR_EMAIL || process.argv[2];
 if(!email){console.error('Uso: npm run credentials -- email < senha via stdin');process.exit(1);}
 const user=db.get('users').find(u=>u.email.toLowerCase()===email.toLowerCase());
 if(!user){console.error('Conta existente não encontrada. Nenhuma conta criada.');process.exit(1);}

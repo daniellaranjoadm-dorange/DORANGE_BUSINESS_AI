@@ -1,6 +1,12 @@
-# Cópia para desenvolvimento e importação no AI Studio
+# D’OR@NGE Business AI — recuperação R5.3.3 e evolução local
 
-Sem dados reais ou backups no repositório. Veja IMPORTAR-AI-STUDIO.md. Para iniciar: npm ci, npm run setup:local, npm run dev. Para testar: npm test (fixtures sintéticas isoladas). Consulte CHANGELOG-R5.3.md e RELATORIO-R5.3.md para detalhes da versão R5.3.
+Código de desenvolvimento na branch `recovery/business-ai-r533`, com suporte inicial a 12 nichos, personalização por empresa, importação com revisão e IA externa opcional. Banco real, senhas, backups e uploads privados não pertencem ao repositório.
+
+- [Executar e ativar acesso no Windows](README-WINDOWS.md)
+- [Melhorias, validações e próximos passos comerciais](ENTREGA-PRODUTO.md)
+- [Continuar no Studio sem perder dados](IMPORTAR-AI-STUDIO.md)
+
+Para recuperação, restaure uma cópia privada em diretório novo e configure DATA_DIR; não execute `setup:local`. As instruções históricas abaixo sobre instalação nova não substituem o procedimento de recuperação. Testes usam fixtures sintéticas isoladas. `main` permanece preservada até homologação.
 
 # D'OR@NGE BUSINESS AI — R5.3
 ## Entrega R5.3 (v5.3.0)

@@ -9,7 +9,12 @@ export type BusinessSegmentId =
   | 'brows_lashes' 
   | 'esthetics' 
   | 'massage' 
-  | 'home_services';
+  | 'home_services'
+  | 'pet_grooming'
+  | 'automotive'
+  | 'photography'
+  | 'tutoring'
+  | 'tailoring';
 
 export interface BusinessSegmentTerminology {
   appointmentSingular: string; // "Atendimento" | "Corte" | "Procedimento" | "Sessão" | "Visita"

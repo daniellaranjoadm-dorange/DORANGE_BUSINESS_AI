@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     id VARCHAR(64) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     trade_name VARCHAR(255) NOT NULL,
-    business_segment VARCHAR(32) NOT NULL DEFAULT 'nails' CHECK (business_segment IN ('nails','barber','beauty','brows_lashes','esthetics','massage','home_services')),
+    business_segment VARCHAR(32) NOT NULL DEFAULT 'nails' CHECK (business_segment IN ('nails','barber','beauty','brows_lashes','esthetics','massage','home_services','pet_grooming','automotive','photography','tutoring','tailoring')),
     business_hours JSONB,
     slug VARCHAR(100) UNIQUE NOT NULL,
     document VARCHAR(32) NOT NULL,

@@ -1,3 +1,4 @@
+import {localDateKey} from '../utils/businessInsights';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AppTab } from '../context/AppContext';
@@ -22,6 +23,8 @@ import {
 import { DOrangeBrand } from './DOrangeBrand';
 
 interface SidebarProps {
+  mobileOpen?: boolean;
+  onCloseMobile?: ()=>void;
   collapsed: boolean;
   onToggleCollapse: () => void;
   onOpenDemoSwitcher: () => void;
@@ -31,6 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   onToggleCollapse,
   onOpenDemoSwitcher,
+  mobileOpen,
+  onCloseMobile,
 }) => {
   const { 
     activeTab, 
@@ -43,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   } = useApp();
 
   // Badges informativos
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = localDateKey(new Date());
   const pendingAppointmentsToday = appointments.filter(
     (a) => a.date === todayStr && a.status === 'pending'
   ).length;
@@ -123,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`hidden lg:flex flex-col bg-white border-r border-[#E6E8EC] transition-all duration-200 z-30 select-none shrink-0 ${
+      className={`${mobileOpen?'flex fixed inset-y-0 left-0 shadow-2xl':'hidden'} lg:flex lg:static flex-col bg-white border-r border-[#E6E8EC] transition-all duration-200 z-30 select-none shrink-0 ${
         collapsed ? 'w-20' : 'w-64'
       }`}
     >
@@ -139,7 +144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <img
                     src={currentTenant.logoUrl}
                     alt={currentTenant.tradeName}
-                    className="w-8 h-8 rounded-lg object-cover border border-stone-200 shrink-0"
+                    className="w-8 h-8 rounded-lg object-contain bg-white p-0.5 border border-stone-200 shrink-0"
                   />
                 ) : (
                   <div
@@ -166,7 +171,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <img
                 src={currentTenant.logoUrl}
                 alt={currentTenant.tradeName}
-                className="w-8 h-8 rounded-lg object-cover border border-stone-200"
+                className="w-8 h-8 rounded-lg object-contain bg-white p-0.5 border border-stone-200"
               />
             ) : (
               <div
@@ -207,7 +212,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => {setActiveTab(item.id);onCloseMobile?.();}}
+                  style={isActive&&!isSuperAdminTab?{backgroundColor:'var(--brand-soft)',color:'#17191F'}:undefined}
                   title={collapsed ? item.label : undefined}
                   className={`w-full flex items-center rounded-xl text-xs font-semibold transition-all group ${
                     collapsed
@@ -265,7 +271,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           title="Abrir página pública de agendamento do estúdio"
         >
           <ExternalLink className="w-3.5 h-3.5 text-amber-700" />
-          {!collapsed && <span>Portal da Cliente</span>}
+          {!collapsed && <span>Portal de Agendamento</span>}
         </button>
 
         {/* Botão Simulador Demo (Discreto, não intrusivo) */}

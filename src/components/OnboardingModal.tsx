@@ -309,15 +309,15 @@ export const OnboardingModal: React.FC = () => {
         setFormData((prev) => ({
           ...prev,
           tradeName: setup.tradeName || prev.tradeName,
-          primaryColor: setup.primaryColor || prev.primaryColor,
+          primaryColor: prev.primaryColor,
           selectedServices: Array.isArray(setup.services) && setup.services.length > 0 
             ? setup.services.map((s: any) => s.name) 
             : prev.selectedServices,
         }));
-        showNotification('Configuração gerada pela IA aplicada com sucesso!', 'success');
+        showNotification('Sugestões aplicadas. Revise preços, duração e custos antes de concluir.', 'success');
       }
     } catch (err: any) {
-      showNotification('Não foi possível gerar com IA no momento. Configure manualmente.', 'error');
+      showNotification('Não foi possível gerar a sugestão. Você pode configurar manualmente.', 'error');
     } finally {
       setIsAiLoading(false);
     }
@@ -351,6 +351,8 @@ export const OnboardingModal: React.FC = () => {
       return;
     }
 
+    const selectedCatalog=aiServices.length?aiServices:currentSegmentConfig.suggestedServices.map(s=>({...s,price:s.suggestedPriceBRL}));
+    if(selectedCatalog.some(s=>formData.selectedServices.includes(s.name)&&s.price===0)&&!window.confirm('Há serviços selecionados com preço zero. Eles serão exibidos sem cobrança de valor no catálogo. Confirma que revisou esses preços?')){setStep(4);return;}
     setIsSubmitting(true);
     try {
       // Montagem do endereço formatado
@@ -1148,7 +1150,7 @@ export const OnboardingModal: React.FC = () => {
                     Serviços Sugeridos para {currentSegmentConfig.name}
                   </h4>
                   <p className="text-xs text-stone-500">
-                    Selecione os que deseja ativar de início. Todos os preços e durações são editáveis.
+                    Selecione os que deseja ativar de início. Revise os preços e durações antes de ativar. Valores são sugestões, não pesquisa de mercado.
                   </p>
                 </div>
                 <span className="text-xs px-2 py-0.5 bg-stone-100 rounded-md font-semibold text-stone-700">
@@ -1510,7 +1512,7 @@ export const OnboardingModal: React.FC = () => {
                   {formData.businessSegment === 'barber'
                     ? 'Continuar para Dados da Barbearia'
                     : formData.businessSegment === 'nails' || formData.businessSegment === 'beauty'
-                    ? 'Continuar para Dados do Salão'
+                    ? 'Continuar para dados da empresa'
                     : 'Continuar para Dados do Estabelecimento'}
                 </span>
                 <ArrowRight className="w-4 h-4" />

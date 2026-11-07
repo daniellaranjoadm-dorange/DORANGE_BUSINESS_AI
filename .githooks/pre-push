@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+branch=$(git symbolic-ref --short HEAD)
+if [ "$branch" != "recovery/business-ai-r533" ]; then
+  echo "Push local permitido apenas na branch de recuperação."
+  exit 1
+fi
+while read local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" != "refs/heads/recovery/business-ai-r533" ]; then
+    echo "Destino recusado: preserve main."
+    exit 1
+  fi
+done
+npm run typecheck
+npm test
+npm run build
+npm run check:publish

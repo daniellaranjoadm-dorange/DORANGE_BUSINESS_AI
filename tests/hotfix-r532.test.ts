@@ -8,7 +8,7 @@ import { BUSINESS_SEGMENTS } from '../src/data/businessSegments.js';
 test('HOTFIX R5.3.2: Validação da Etapa 1 do Onboarding — Segmentos, Credenciais do Proprietário e Retenção de Estado', async () => {
   // 1. Teste de Seleção de Segmentos
   const segments = Object.keys(BUSINESS_SEGMENTS);
-  assert.equal(segments.length, 7, 'Devem existir 7 segmentos comerciais suportados');
+  assert.equal(segments.length, 12, 'Devem existir 12 segmentos comerciais suportados');
   assert.ok(segments.includes('nails'), 'Segmento NAILS deve existir');
   assert.ok(BUSINESS_SEGMENTS.nails.suggestedServices.length > 0, 'NAILS deve ter serviços sugeridos');
 

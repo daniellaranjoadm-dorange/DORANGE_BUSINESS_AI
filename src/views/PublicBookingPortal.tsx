@@ -1,3 +1,4 @@
+import {localDateKey} from '../utils/businessInsights';
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Tenant, Service, Professional, PortfolioItem } from '../types';
@@ -60,7 +61,7 @@ export const PublicBookingPortal: React.FC = () => {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedProf, setSelectedProf] = useState<Professional | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
+    localDateKey(new Date())
   );
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [customerName, setCustomerName] = useState<string>('');
@@ -516,7 +517,7 @@ export const PublicBookingPortal: React.FC = () => {
                     <input
                       type="date"
                       value={selectedDate}
-                      min={new Date().toISOString().split('T')[0]}
+                      min={localDateKey(new Date())}
                       onChange={(e) => setSelectedDate(e.target.value)}
                       className="w-full text-xs font-medium px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl outline-none"
                     />

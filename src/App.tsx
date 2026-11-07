@@ -1,5 +1,6 @@
 import { LoginView } from './components/LoginView';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import {getBrandTheme} from './utils/brandTheme';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './design-system/Sidebar';
 import { SalonHeader } from './design-system/SalonHeader';
@@ -7,54 +8,75 @@ import { DemoSwitcherModal } from './design-system/DemoSwitcherModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { OnboardingModal } from './components/OnboardingModal';
 import { DashboardView } from './views/DashboardView';
-import { CalendarView } from './views/CalendarView';
-import { CatalogView } from './views/CatalogView';
-import { CustomersView } from './views/CustomersView';
-import { FinancialView } from './views/FinancialView';
-import { AiAssistantView } from './views/AiAssistantView';
-import { SettingsView } from './views/SettingsView';
-import { SuperAdminView } from './views/SuperAdminView';
-import { PublicBookingPortal } from './views/PublicBookingPortal';
-import { InventoryView } from './views/InventoryView';
-import { MarketingAiView } from './views/MarketingAiView';
-import { PackagesView } from './views/PackagesView';
-import { PortfolioView } from './views/PortfolioView';
-import { WhatsAppConfigView } from './views/WhatsAppConfigView';
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
+const CalendarView=React.lazy(()=>import('./views/CalendarView').then(module=>({default:module.CalendarView})));
+const CatalogView=React.lazy(()=>import('./views/CatalogView').then(module=>({default:module.CatalogView})));
+const CustomersView=React.lazy(()=>import('./views/CustomersView').then(module=>({default:module.CustomersView})));
+const FinancialView=React.lazy(()=>import('./views/FinancialView').then(module=>({default:module.FinancialView})));
+const AiAssistantView=React.lazy(()=>import('./views/AiAssistantView').then(module=>({default:module.AiAssistantView})));
+const SettingsView=React.lazy(()=>import('./views/SettingsView').then(module=>({default:module.SettingsView})));
+const SuperAdminView=React.lazy(()=>import('./views/SuperAdminView').then(module=>({default:module.SuperAdminView})));
+const PublicBookingPortal=React.lazy(()=>import('./views/PublicBookingPortal').then(module=>({default:module.PublicBookingPortal})));
+const InventoryView=React.lazy(()=>import('./views/InventoryView').then(module=>({default:module.InventoryView})));
+const MarketingAiView=React.lazy(()=>import('./views/MarketingAiView').then(module=>({default:module.MarketingAiView})));
+const PackagesView=React.lazy(()=>import('./views/PackagesView').then(module=>({default:module.PackagesView})));
+const PortfolioView=React.lazy(()=>import('./views/PortfolioView').then(module=>({default:module.PortfolioView})));
+const WhatsAppConfigView=React.lazy(()=>import('./views/WhatsAppConfigView').then(module=>({default:module.WhatsAppConfigView})));
+
 const MainAppContent: React.FC = () => {
-  const { activeTab, currentViewMode, notification, currentUser, isLoading } = useApp();
+  const { activeTab, currentViewMode, notification, currentUser, currentTenant, isLoading } = useApp();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isDemoModalOpen, setIsDemoModalOpen] = useState<boolean>(false);
+  const [isMobileMenuOpen,setIsMobileMenuOpen]=useState(false);
+  useEffect(()=>{if(currentViewMode==='saas')document.title=currentTenant?`${currentTenant.tradeName} | Gestão do negócio`:"D'OR@NGE Business AI";},[currentTenant?.tradeName,currentViewMode]);
 
   // Se estiver no Portal da Cliente
   if (currentViewMode === 'public_booking') {
-    return <PublicBookingPortal />;
+    return <React.Suspense fallback={<p role="status" className="p-8">Abrindo sua página de agendamento…</p>}><PublicBookingPortal /></React.Suspense>;
   }
 
   if(isLoading)return <p className="p-8">Carregando…</p>;
   if(!currentUser)return <LoginView/>;
   return (
-    <div className="min-h-screen bg-[#F8F9FB] flex text-[#17191F] font-sans selection:bg-rose-200 selection:text-rose-900">
+    <div style={getBrandTheme(activeTab==='super-admin'?'#17191F':currentTenant?.primaryColor) as React.CSSProperties} className="tenant-workspace min-h-screen bg-[#F8F9FB] flex text-[#17191F] font-sans selection:bg-stone-200 selection:text-stone-900">
       
       {/* 1. Sidebar Desktop Recolhível */}
       <Sidebar
+        mobileOpen={isMobileMenuOpen}
+        onCloseMobile={()=>setIsMobileMenuOpen(false)}
         collapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         onOpenDemoSwitcher={() => setIsDemoModalOpen(true)}
       />
+      {isMobileMenuOpen&&<button aria-label="Fechar menu de navegação" onClick={()=>setIsMobileMenuOpen(false)} className="lg:hidden fixed inset-0 bg-stone-950/50 z-20"/>}
 
       {/* 2. Área Central de Trabalho */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         
         {/* Cabeçalho Focado no Salão da Manicure */}
         <SalonHeader
+          onOpenMobileMenu={()=>setIsMobileMenuOpen(true)}
           onOpenDemoSwitcher={() => setIsDemoModalOpen(true)}
         />
 
         {/* Conteúdo Dinâmico da Aba Ativa */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-10 overflow-x-hidden">
+        <main key={currentTenant?.id} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-10 overflow-x-hidden">
+          <React.Suspense fallback={<p role="status" className="p-8 text-sm text-stone-500">Abrindo módulo…</p>}>
           {activeTab === 'dashboard' && <DashboardView />}
           {activeTab === 'calendar' && <CalendarView />}
           {activeTab === 'catalog' && <CatalogView />}
@@ -68,6 +90,7 @@ const MainAppContent: React.FC = () => {
           {activeTab === 'ai-assistant' && <AiAssistantView />}
           {activeTab === 'settings' && <SettingsView />}
           {activeTab === 'super-admin' && <SuperAdminView />}
+          </React.Suspense>
         </main>
       </div>
 

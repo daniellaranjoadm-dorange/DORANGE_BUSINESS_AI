@@ -32,7 +32,7 @@ export const OnboardingChecklist: React.FC = () => {
     showNotification
   } = useApp();
 
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [isAiSetupOpen, setIsAiSetupOpen] = useState<boolean>(false);
   const [aiPrompt, setAiPrompt] = useState<string>('Atendimento personalizado, com qualidade, conforto e horários flexíveis');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -44,7 +44,7 @@ export const OnboardingChecklist: React.FC = () => {
   const steps = [
     {
       id: 'step-data',
-      title: 'Dados do Salão e Contato',
+      title: 'Dados da Empresa e Contato',
       desc: 'Nome fantasia, telefone e endereço configurados',
       done: Boolean(currentTenant.tradeName && currentTenant.phone),
       actionTab: 'settings' as const,
@@ -53,7 +53,7 @@ export const OnboardingChecklist: React.FC = () => {
     {
       id: 'step-brand',
       title: 'Identidade Visual & Cores',
-      desc: 'Paleta personalizada e logotipo do estúdio',
+      desc: 'Paleta personalizada e logotipo da empresa',
       done: Boolean(currentTenant.primaryColor && (currentTenant.logoUrl || currentTenant.coverUrl)),
       actionTab: 'settings' as const,
       actionLabel: 'Ajustar visual',
@@ -92,7 +92,7 @@ export const OnboardingChecklist: React.FC = () => {
     },
     {
       id: 'step-portal',
-      title: 'Portal White-Label da Cliente',
+      title: 'Portal de Agendamento da Empresa',
       desc: `Página pública exclusiva ativada: /${currentTenant.slug}`,
       done: Boolean(currentTenant.slug),
       actionTab: 'portal' as const,
@@ -131,7 +131,7 @@ export const OnboardingChecklist: React.FC = () => {
       );
       setAiPreview(setup);
     } catch (e: any) {
-      showNotification('Erro ao gerar configuração com IA.', 'error');
+      showNotification('Erro ao gerar configuração com sugestões locais.', 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -143,8 +143,8 @@ export const OnboardingChecklist: React.FC = () => {
       setIsGenerating(true);
       // 1. Atualiza dados do tenant
       await updateTenant(currentTenant.id, {
-        tradeName: aiPreview.tradeName || currentTenant.tradeName,
-        primaryColor: aiPreview.primaryColor || currentTenant.primaryColor,
+        tradeName: currentTenant.tradeName,
+        primaryColor: currentTenant.primaryColor,
         description: aiPreview.welcomeBio || currentTenant.description,
       });
 
@@ -155,17 +155,17 @@ export const OnboardingChecklist: React.FC = () => {
           if (!exists) {
             await createService({
               name: svc.name,
-              category: svc.category || 'Alongamento',
-              durationMinutes: svc.durationMinutes || 60,
-              price: svc.price || 95,
-              costBRL: svc.costBRL || 15,
+              category: svc.category || 'Serviços',
+              durationMinutes: svc.durationMinutes ?? 60,
+              price: svc.price ?? 0,
+              costBRL: svc.costBRL ?? 0,
               description: svc.description || '',
             });
           }
         }
       }
 
-      showNotification('Configuração completa aplicada com sucesso com IA!', 'success');
+      showNotification('Configuração completa aplicada com sucesso com sugestões locais!', 'success');
       setIsAiSetupOpen(false);
       setAiPreview(null);
     } catch (e: any) {
@@ -187,14 +187,14 @@ export const OnboardingChecklist: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-display font-bold text-base text-[#17191F]">
-                  Checklist de Ativação do Salão
+                  Primeiros passos do negócio
                 </h3>
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-[#17191F] border border-stone-200">
                   {progressPercent}% Concluído
                 </span>
               </div>
               <p className="text-xs text-[#667085] mt-0.5">
-                Complete as 8 etapas essenciais para operar seu salão white-label com máxima produtividade.
+                Complete as 8 etapas essenciais para operar seu negócio com marca própria com máxima produtividade.
               </p>
             </div>
           </div>
@@ -205,7 +205,7 @@ export const OnboardingChecklist: React.FC = () => {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold text-xs rounded-xl transition shadow-2xs cursor-pointer"
             >
               <Wand2 className="w-3.5 h-3.5 text-amber-200" />
-              <span>Configurar com IA</span>
+              <span>Configurar com sugestões locais</span>
             </button>
 
             <button
@@ -230,7 +230,7 @@ export const OnboardingChecklist: React.FC = () => {
             <span>{completedCount} de {steps.length} etapas concluídas</span>
             {progressPercent === 100 ? (
               <span className="text-emerald-700 font-bold flex items-center gap-1">
-                <Check className="w-3 h-3" /> Salão 100% pronto para clientes!
+                <Check className="w-3 h-3" /> Etapas iniciais preenchidas. Revise a operação antes de divulgar.
               </span>
             ) : (
               <span>Faltam {steps.length - completedCount} etapas para 100%</span>
@@ -285,7 +285,7 @@ export const OnboardingChecklist: React.FC = () => {
         )}
       </div>
 
-      {/* Modal de Ativação Rápida com IA (1 Clique) */}
+      {/* Modal de Ativação Rápida com sugestões locais (1 Clique) */}
       {isAiSetupOpen && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-xl w-full border border-stone-200 shadow-2xl p-6 relative animate-fade-in my-8 max-h-[90vh] overflow-y-auto">
@@ -302,10 +302,10 @@ export const OnboardingChecklist: React.FC = () => {
             </div>
 
             <h3 className="font-display font-bold text-xl text-[#17191F]">
-              Configuração Instantânea do Salão com IA
+              Configuração assistida do negócio com sugestões locais
             </h3>
             <p className="text-xs text-[#667085] mt-1">
-              Descreva seu foco de trabalho ou clique em um modelo pronto. A IA gera sua marca, serviços calibrados ao mercado brasileiro e catálogo em segundos.
+              Descreva seu foco de trabalho ou clique em um modelo pronto. O assistente sugere serviços do seu nicho sem consumir IA externa. Revise preços e custos antes de aplicar.
             </p>
 
             {/* Modelos Rápidos */}
@@ -404,12 +404,12 @@ export const OnboardingChecklist: React.FC = () => {
                   {isGenerating ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      <span>Analisando com IA...</span>
+                      <span>Analisando com sugestões locais...</span>
                     </>
                   ) : (
                     <>
                       <Wand2 className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Gerar Proposta com IA</span>
+                      <span>Gerar Proposta com sugestões locais</span>
                     </>
                   )}
                 </button>
@@ -423,12 +423,12 @@ export const OnboardingChecklist: React.FC = () => {
                   {isGenerating ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      <span>Aplicando ao Salão...</span>
+                      <span>Aplicando à empresa...</span>
                     </>
                   ) : (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      <span>Aprovar e Aplicar ao Meu Salão</span>
+                      <span>Aplicar sugestões na minha empresa</span>
                     </>
                   )}
                 </button>

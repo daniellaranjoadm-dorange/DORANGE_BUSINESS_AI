@@ -1,3 +1,4 @@
+import {localDateKey} from '../utils/businessInsights';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { X, Calendar, Clock, User, Phone, Sparkles, Check, AlertCircle } from 'lucide-react';
@@ -20,7 +21,7 @@ export const NewAppointmentModal: React.FC<Props> = ({
 }) => {
   const { currentTenant, services, professionals, createAppointment } = useApp();
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = localDateKey(new Date());
 
   const [serviceId, setServiceId] = useState<string>(services[0]?.id || '');
   const [professionalId, setProfessionalId] = useState<string>(
@@ -29,7 +30,7 @@ export const NewAppointmentModal: React.FC<Props> = ({
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [date, setDate] = useState<string>(preselectedDate || todayStr);
-  const [time, setTime] = useState<string>(preselectedTime || '14:00');
+  const [time, setTime] = useState<string>(preselectedTime || '');
   const [isDomicile, setIsDomicile] = useState<boolean>(false);
   const [address, setAddress] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -37,6 +38,15 @@ export const NewAppointmentModal: React.FC<Props> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [resources, setResources] = useState<any[]>([]);
   const [selectedResourceId, setSelectedResourceId] = useState<string>('');
+
+  React.useEffect(()=>{
+    if(!isOpen)return;
+    setDate(preselectedDate||localDateKey(new Date()));
+    setTime(preselectedTime||'');
+    setProfessionalId(preselectedProfId||professionals.find(p=>p.active)?.id||'');
+    setServiceId(services.find(s=>s.active&&s.itemType!=='product')?.id||'');
+    setErrorMessage(null);
+  },[isOpen,preselectedDate,preselectedTime,preselectedProfId]);
 
   React.useEffect(() => {
     if (currentTenant?.id) {

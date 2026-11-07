@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { formatCurrencyBRL, formatDateBR } from '../utils/validators';
 import { InventoryItem } from '../types';
+import { InventoryStarter } from '../components/InventoryStarter';
 
 export const InventoryView: React.FC = () => {
   const { currentTenant, inventory, inventoryMovements, createInventoryItem, updateInventoryItem, consumeInventory, showNotification } = useApp();
@@ -29,9 +30,9 @@ export const InventoryView: React.FC = () => {
   const [name, setName] = useState('');
   const [category, setCategory] = useState<string>('Outros');
   const [unit, setUnit] = useState<'un' | 'ml' | 'g' | 'pacote' | 'frasco'>('frasco');
-  const [quantity, setQuantity] = useState('5');
-  const [minQuantity, setMinQuantity] = useState('2');
-  const [unitCost, setUnitCost] = useState('45.00');
+  const [quantity, setQuantity] = useState('0');
+  const [minQuantity, setMinQuantity] = useState('0');
+  const [unitCost, setUnitCost] = useState('0');
   const [supplier, setSupplier] = useState('');
 
   const categories = ['all', ...new Set([...(currentTenant?.businessSegment === 'nails' ? ['Géis', 'Fibras', 'Esmaltes', 'Lixas e Brocas'] : ['Produtos', 'Equipamentos']), 'Descartáveis', 'Químicos', 'Outros', ...inventory.map(item => item.category)])];
@@ -77,17 +78,18 @@ export const InventoryView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20 xl:pb-8">
+      <InventoryStarter key={currentTenant?.id} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display font-bold text-stone-900 text-xl sm:text-2xl flex items-center gap-2">
             Controle de Estoque & Insumos
             <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md">
-              R5.1
+              Seu negócio
             </span>
           </h1>
           <p className="text-xs text-stone-700">
-            Acompanhe o consumo de géis, fibras, lixas e materiais descartáveis do {currentTenant?.tradeName}
+            Materiais, custos e reposição de {currentTenant?.tradeName}. Cadastre o que você realmente usa.
           </p>
         </div>
 

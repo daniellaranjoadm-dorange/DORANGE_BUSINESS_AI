@@ -1,3 +1,4 @@
+import {localDateKey} from '../utils/businessInsights';
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -28,6 +29,7 @@ export const MarketingAiView: React.FC = () => {
   const [postType, setPostType] = useState<'feed' | 'story' | 'reels'>('feed');
   const [tone, setTone] = useState<'elegante' | 'descontraido' | 'promocional'>('elegante');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [useExternalAI,setUseExternalAI]=useState(false);
   const [generatedCaption, setGeneratedCaption] = useState('');
   const [generatedHashtags, setGeneratedHashtags] = useState<string[]>([]);
 
@@ -69,15 +71,16 @@ export const MarketingAiView: React.FC = () => {
           topic,
           tone,
           tenantId: currentTenant?.id,
+          useAI:useExternalAI,
         }),
       });
-      if (!res.ok) throw new Error('Falha ao gerar conteúdo');
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error||'Falha ao gerar conteúdo');
       setGeneratedCaption(data.copy || '');
       setGeneratedHashtags(data.hashtags || []);
       showNotification(data.source === 'local' ? 'Sugestão local gerada. Revise antes de usar.' : 'Conteúdo gerado com IA. Revise antes de usar.', 'info');
     } catch (e: any) {
-      alert('Erro ao gerar post com a IA.');
+      showNotification(e.message||'Não foi possível gerar o texto.','error');
     } finally {
       setIsGenerating(false);
     }
@@ -92,7 +95,7 @@ export const MarketingAiView: React.FC = () => {
       caption: generatedCaption,
       hashtags: generatedHashtags,
       imageUrl: currentTenant?.coverUrl || '/images/dorange_hero_studio_1793885623392.jpg',
-      scheduledDate: publishNow ? undefined : new Date().toISOString().split('T')[0],
+      scheduledDate: publishNow ? undefined : localDateKey(new Date()),
       scheduledTime: publishNow ? undefined : '18:00',
     });
 
@@ -279,6 +282,7 @@ export const MarketingAiView: React.FC = () => {
               </div>
             </div>
 
+            <label className="flex gap-2 items-start text-xs text-stone-600"><input type="checkbox" checked={useExternalAI} onChange={e=>setUseExternalAI(e.target.checked)}/><span>Usar IA externa. Envia tema e dados comerciais ao provedor e pode gerar cobrança. Desmarcado usa um modelo local sem créditos.</span></label>
             <button
               onClick={handleGenerateCopy}
               disabled={isGenerating || !topic.trim()}
@@ -287,12 +291,12 @@ export const MarketingAiView: React.FC = () => {
               {isGenerating ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  Criando Post com Gemini AI...
+                  Preparando texto para revisão...
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Gerar Post com IA
+                  {useExternalAI?'Gerar texto com IA externa':'Gerar sugestão sem gastar IA'}
                 </>
               )}
             </button>
@@ -340,7 +344,7 @@ export const MarketingAiView: React.FC = () => {
                 <div className="py-20 text-center text-stone-400 space-y-2">
                   <Sparkles className="w-8 h-8 mx-auto text-stone-300" />
                   <p className="text-xs">
-                    Preencha o tema e clique em "Gerar Post com IA" para visualizar a arte e a legenda formatada.
+                    Preencha o tema para preparar uma legenda. A imagem é sua capa cadastrada; nenhuma arte é gerada automaticamente.
                   </p>
                 </div>
               )}
@@ -379,7 +383,7 @@ export const MarketingAiView: React.FC = () => {
                 Otimização Inteligente de Vagas Ociosas
               </h3>
               <p className="text-xs text-stone-700">
-                A IA do D'OR@NGE monitora horários vagos e sugere campanhas de urgência para aumentar seu faturamento
+                Prepare uma divulgação e confira os horários reais na agenda antes de oferecer disponibilidade ou desconto.
               </p>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import {localDateKey} from '../utils/businessInsights';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -62,7 +63,7 @@ export const CalendarView: React.FC = () => {
   const [waitServiceName, setWaitServiceName] = useState<string>('Alongamento ou Esmaltação');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const currentDateStr = currentDate.toISOString().split('T')[0];
+  const currentDateStr = localDateKey(currentDate);
 
   // Filtra agendamentos
   const filteredAppointments = appointments.filter((a) => {

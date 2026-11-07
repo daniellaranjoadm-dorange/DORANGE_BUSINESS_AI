@@ -110,7 +110,7 @@ export const SettingsView: React.FC = () => {
             Marca & Identidade White-Label
           </h1>
           <p className="text-xs text-[#667085] mt-0.5">
-            Personalize logotipo, paleta de cores, fotos e horários exclusivos do seu estúdio
+            Sua empresa, sua marca: logotipo, cores, fotos e horários próprios.
           </p>
         </div>
 

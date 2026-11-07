@@ -9,9 +9,9 @@ import { BUSINESS_SEGMENTS } from '../src/data/businessSegments.js';
 const source = fs.readFileSync('tests/fixtures/database.synthetic.json', 'utf8');
 const fixtureData = JSON.parse(source);
 
-test('multissegmento: todos os 7 segmentos possuem configurações, terminologia e catálogo definidos', () => {
-  const segmentKeys = ['nails', 'barber', 'beauty', 'brows_lashes', 'esthetics', 'massage', 'home_services'] as const;
-  assert.equal(Object.keys(BUSINESS_SEGMENTS).length, 7);
+test('multissegmento: todos os 12 segmentos possuem configurações, terminologia e catálogo definidos', () => {
+  const segmentKeys = Object.keys(BUSINESS_SEGMENTS) as (keyof typeof BUSINESS_SEGMENTS)[];
+  assert.equal(segmentKeys.length, 12);
 
   for (const key of segmentKeys) {
     const seg = BUSINESS_SEGMENTS[key];

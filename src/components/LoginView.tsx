@@ -1,124 +1,184 @@
-import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import { OnboardingModal } from './OnboardingModal';
-import { Lock, Mail, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
-
+import React, { useState } from "react";
+import { useApp } from "../context/AppContext";
+import { OnboardingModal } from "./OnboardingModal";
+import { DOrangeBrand } from "../design-system/DOrangeBrand";
+import { BUSINESS_SEGMENTS } from "../data/businessSegments";
+import {
+  ArrowRight,
+  CalendarDays,
+  Palette,
+  PackageCheck,
+  AlertCircle,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 export function LoginView() {
   const { login, setIsOnboardingOpen } = useApp();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [visible, setVisible] = useState(false);
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    setError('');
+    setError("");
     try {
       await login(email.trim().toLowerCase(), password);
-    } catch (err: any) {
-      setError(err.message || 'Falha no login. Verifique suas credenciais.');
+    } catch (e: any) {
+      setError(e.message || "Não foi possível entrar. Confira e-mail e senha.");
     } finally {
       setBusy(false);
     }
   };
-
   return (
-    <main className="min-h-screen bg-stone-100/70 flex items-center justify-center p-4 sm:p-6">
-      <div className="bg-white border border-stone-200 shadow-xl rounded-3xl p-6 sm:p-8 w-full max-w-md space-y-6">
-        
-        {/* Brand Header */}
-        <div className="text-center space-y-1.5">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-stone-900 text-white font-display font-black text-xl mb-1 shadow-sm">
-            D'
-          </div>
-          <h1 className="text-xl font-display font-bold text-stone-900 tracking-tight">
-            D'OR@NGE BUSINESS AI
-          </h1>
-          <p className="text-xs text-stone-600">
-            Acesso ao painel administrativo do seu estabelecimento
+    <main className="min-h-screen bg-[#f6f5f2] grid lg:grid-cols-2 text-[#17191F]">
+      <section className="hidden lg:flex flex-col justify-between bg-[#17191F] text-white px-12 xl:px-20 py-12 relative overflow-hidden">
+        <div className="absolute -right-40 top-28 w-96 h-96 rounded-full border border-[#C5A46D]/15 pointer-events-none" />
+        <div className="absolute -right-24 top-44 w-64 h-64 rounded-full border border-[#C5A46D]/20 pointer-events-none" />
+        <DOrangeBrand variant="dark" size="lg" showSubtitle={false} />
+        <div className="relative max-w-lg my-12">
+          <p className="text-[#C5A46D] text-xs uppercase tracking-[.22em] font-semibold mb-6">
+            Gestão com a sua identidade
           </p>
-        </div>
-
-        {/* Error Banner */}
-        {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2.5 text-rose-800 text-xs">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span className="font-medium">{error}</span>
+          <h1 className="text-4xl xl:text-5xl font-display font-semibold leading-tight">
+            Sua marca em primeiro lugar.
+            <br />
+            <span className="text-[#C5A46D]">Seu negócio em movimento.</span>
+          </h1>
+          <p className="text-stone-300 text-base leading-relaxed mt-6">
+            Uma rotina mais simples para quem atende, organiza e faz o próprio
+            negócio crescer.
+          </p>
+          <div className="mt-10 space-y-5">
+            {[
+              [
+                Palette,
+                "A experiência leva a sua marca",
+                "Logo, cores e página de agendamento da sua empresa.",
+              ],
+              [
+                CalendarDays,
+                "Do primeiro contato ao próximo horário",
+                "Agenda, clientes e comunicação no mesmo lugar.",
+              ],
+              [
+                PackageCheck,
+                "Um começo que respeita o seu nicho",
+                `Catálogos e insumos sugeridos para ${Object.keys(BUSINESS_SEGMENTS).length} tipos de negócio.`,
+              ],
+            ].map(([Icon, title, description]: any) => (
+              <div key={title} className="flex gap-3">
+                <div className="rounded-xl p-2.5 bg-white/5 text-[#C5A46D] h-fit">
+                  <Icon size={20} />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-sm">{title}</h2>
+                  <p className="text-sm text-stone-400 mt-1">{description}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        )}
-
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">
-              E-mail de Acesso
-            </label>
-            <div className="relative">
+        </div>
+        <p className="text-xs text-stone-400">
+          D’OR@NGE BUSINESS AI · Tecnologia para negócios de serviços
+        </p>
+      </section>
+      <section className="flex items-center justify-center p-5 sm:p-10">
+        <div className="w-full max-w-md">
+          <div className="lg:hidden mb-10">
+            <DOrangeBrand size="lg" showSubtitle={false} />
+          </div>
+          <p className="text-xs tracking-widest uppercase text-stone-500 font-semibold">
+            Seu espaço de trabalho
+          </p>
+          <h2 className="text-3xl font-display font-semibold mt-3">
+            Bom ter você de volta.
+          </h2>
+          <p className="text-sm text-stone-600 mt-3 mb-8">
+            Entre para cuidar da agenda, dos clientes e dos próximos passos do
+            seu negócio.
+          </p>
+          {error && (
+            <p
+              role="alert"
+              className="flex gap-2 items-center p-3 mb-5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-sm"
+            >
+              <AlertCircle size={18} className="shrink-0" />
+              {error}
+            </p>
+          )}
+          <form onSubmit={submit} className="space-y-5">
+            <div>
+              <label
+                htmlFor="login-email"
+                className="text-sm font-semibold block mb-2"
+              >
+                E-mail de acesso
+              </label>
               <input
-                className="w-full text-xs pl-9 pr-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:bg-white focus:border-stone-900 transition-all"
+                id="login-email"
                 type="email"
                 autoComplete="username"
                 required
-                placeholder="seuemail@empresa.com.br"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="Seu e-mail cadastrado"
+                className="w-full p-3.5 rounded-xl border border-stone-300 bg-white outline-none focus:border-stone-900"
               />
-              <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">
-              Senha
-            </label>
-            <div className="relative">
-              <input
-                className="w-full text-xs pl-9 pr-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:bg-white focus:border-stone-900 transition-all"
-                type="password"
-                autoComplete="current-password"
-                required
-                placeholder="••••••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <div>
+              <label
+                htmlFor="login-password"
+                className="text-sm font-semibold block mb-2"
+              >
+                Senha
+              </label>
+              <div className="relative">
+                <input
+                  id="login-password"
+                  type={visible ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Sua senha"
+                  className="w-full p-3.5 pr-12 rounded-xl border border-stone-300 bg-white outline-none focus:border-stone-900"
+                />
+                <button
+                  type="button"
+                  onClick={() => setVisible(!visible)}
+                  aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
+                  className="absolute right-2 top-2 p-2 text-stone-500"
+                >
+                  {visible ? <EyeOff size={19} /> : <Eye size={19} />}
+                </button>
+              </div>
             </div>
+            <button
+              disabled={busy}
+              className="w-full flex items-center justify-center gap-2 bg-[#17191F] hover:bg-stone-800 text-white py-3.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+            >
+              {busy ? "Entrando…" : "Entrar no meu negócio"}
+              <ArrowRight size={17} />
+            </button>
+          </form>
+          <div className="border-t border-stone-200 mt-8 pt-7">
+            <p className="text-sm text-stone-600 mb-3">Vai começar agora?</p>
+            <button
+              type="button"
+              onClick={() => setIsOnboardingOpen(true)}
+              className="w-full bg-white border border-stone-300 hover:border-stone-600 rounded-xl py-3.5 text-sm font-semibold"
+            >
+              Criar meu espaço com minha marca
+            </button>
+            <p className="text-xs leading-relaxed text-stone-500 mt-5">
+              Use o e-mail da conta cadastrada. Se seu acesso foi recuperado
+              nesta máquina, defina sua senha pelo atalho “Ativar meu acesso”.
+            </p>
           </div>
-
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full py-2.5 text-xs font-bold text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
-          >
-            {busy ? 'Entrando…' : 'Entrar no Sistema'}
-            {!busy && <ArrowRight className="w-3.5 h-3.5" />}
-          </button>
-        </form>
-
-        {/* Separator */}
-        <div className="relative flex items-center justify-center">
-          <div className="border-t border-stone-200 w-full" />
-          <span className="bg-white px-2 text-[10px] uppercase font-bold text-stone-600 tracking-wider">
-            Novo por aqui?
-          </span>
         </div>
-
-        {/* Action: Open Onboarding */}
-        <button
-          type="button"
-          onClick={() => setIsOnboardingOpen(true)}
-          className="w-full py-2.5 text-xs font-bold text-stone-800 bg-stone-100 hover:bg-stone-200 border border-stone-200 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-          Cadastrar Meu Estabelecimento (Grátis)
-        </button>
-
-        <p className="text-[11px] text-center text-stone-600 leading-relaxed">
-          Contas anteriores ativam a senha via linha de comando protegida por scrypt.
-        </p>
-      </div>
-
+      </section>
       <OnboardingModal />
     </main>
   );

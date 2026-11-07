@@ -1,3 +1,4 @@
+import {localDateKey} from '../utils/businessInsights';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -39,7 +40,7 @@ export const SalonHeader: React.FC<SalonHeaderProps> = ({
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = localDateKey(new Date());
   const pendingAppointments = appointments.filter(
     (a) => a.date === todayStr && a.status === 'pending'
   );
@@ -99,7 +100,7 @@ export const SalonHeader: React.FC<SalonHeaderProps> = ({
               <img
                 src={currentTenant.logoUrl}
                 alt={currentTenant.tradeName}
-                className="w-9 h-9 rounded-xl object-cover border border-stone-200 shrink-0"
+                className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 border border-stone-200 shrink-0"
               />
             ) : (
               <div
@@ -133,7 +134,7 @@ export const SalonHeader: React.FC<SalonHeaderProps> = ({
         {/* PWA Install */}
         <PWAInstallButton />
 
-        {/* Botão Ver Portal da Cliente */}
+        {/* Botão Ver Portal de Agendamento */}
         {!isSuperAdmin && (
           <button
             onClick={handleOpenClientPortal}
@@ -141,7 +142,7 @@ export const SalonHeader: React.FC<SalonHeaderProps> = ({
             title="Visualizar a página pública que suas clientes acessam"
           >
             <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
-            <span>Portal da Cliente</span>
+            <span>Portal de Agendamento</span>
           </button>
         )}
 
@@ -213,7 +214,7 @@ export const SalonHeader: React.FC<SalonHeaderProps> = ({
               ? 'bg-stone-100 text-[#17191F]'
               : 'text-[#667085] hover:text-[#17191F] hover:bg-stone-100'
           }`}
-          title="Configurações do Estúdio"
+          title="Configurações da empresa"
         >
           <Settings className="w-4 h-4" />
         </button>
@@ -263,11 +264,11 @@ export const SalonHeader: React.FC<SalonHeaderProps> = ({
                 className="w-full px-3.5 py-2 text-left text-amber-700 hover:bg-amber-50 flex items-center gap-2 font-semibold"
               >
                 <span>🛠️</span>
-                <span>Simulador Demo / Alternar Salão</span>
+                <span>Alternar empresa</span>
               </button>
 
               <div className="border-t border-stone-100 mt-1 pt-1 px-3.5 py-1.5 text-[10px] text-stone-700">
-                Plano: <strong className="text-stone-800 uppercase">{currentTenant?.planId}</strong> · D'OR@NGE v3.0
+                Plano: <strong className="text-stone-800 uppercase">{currentTenant?.planId}</strong> · D'OR@NGE R5.3.3
               </div>
             </div>
           )}
@@ -294,7 +295,7 @@ export const SalonHeader: React.FC<SalonHeaderProps> = ({
             <div className="space-y-3 text-xs text-stone-600 leading-relaxed">
               <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
                 <strong className="text-stone-900 block mb-0.5">Como receber agendamentos?</strong>
-                Compartilhe o link do <strong>Portal da Cliente</strong> no seu Instagram e WhatsApp. Suas clientes agendam diretamente sem precisar de aplicativo.
+                Compartilhe o link do <strong>Portal de Agendamento</strong> no seu Instagram e WhatsApp. Suas clientes agendam diretamente sem precisar de aplicativo.
               </div>
 
               <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">

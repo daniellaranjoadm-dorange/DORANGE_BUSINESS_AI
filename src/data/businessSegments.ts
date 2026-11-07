@@ -1,6 +1,8 @@
 import { BusinessSegment, BusinessSegmentId, SubscriptionPlan } from '../types';
+import { EXPANDED_SEGMENTS } from './expandedSegments';
 
 export const BUSINESS_SEGMENTS: Record<BusinessSegmentId, BusinessSegment> = {
+  ...EXPANDED_SEGMENTS,
   nails: {
     id: 'nails',
     code: 'NAILS',

@@ -15,6 +15,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+:root { --brand-primary:#17191F; --brand-ink:#ffffff; --brand-soft:#f5f3ee; }
+.brand-button { background:var(--brand-primary);color:var(--brand-ink);transition:filter .15s ease; }
+.brand-button:hover { filter:brightness(.93); }
+.brand-soft { background:var(--brand-soft);color:#17191F; }
+.tenant-workspace :focus-visible { outline-color:var(--brand-primary); }
+
 .safe-bottom { padding-bottom: max(0.25rem, env(safe-area-inset-bottom)); }
 :focus-visible { outline: 2px solid #b45309; outline-offset: 3px; }
 @media (max-width: 639px) {

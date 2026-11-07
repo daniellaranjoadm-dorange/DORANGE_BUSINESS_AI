@@ -16,11 +16,15 @@ import {
   Receipt
 } from 'lucide-react';
 import { formatCurrencyBRL, formatDateBR } from '../utils/validators';
+import {localDateKey} from '../utils/businessInsights';
 
 export const FinancialView: React.FC = () => {
   const { currentTenant, financialTransactions, appointments, professionals, createFinancialTransaction } = useApp();
 
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense' | 'commission'>('all');
+  const [period,setPeriod]=useState<'month'|'all'>('month');
+  const currentMonth=localDateKey(new Date()).slice(0,7);
+  const ledger=financialTransactions.filter(t=>t.tenantId===currentTenant?.id&&(period==='all'||t.date.slice(0,7)===currentMonth));
   const [isNewTxModalOpen, setIsNewTxModalOpen] = useState<boolean>(false);
   const [isPixModalOpen, setIsPixModalOpen] = useState<boolean>(false);
   const [selectedReceiptTx, setSelectedReceiptTx] = useState<any>(null);
@@ -32,21 +36,21 @@ export const FinancialView: React.FC = () => {
   const [txAmount, setTxAmount] = useState<string>('');
   const [txPaymentMethod, setTxPaymentMethod] = useState<'pix' | 'credit_card' | 'debit_card' | 'cash'>('pix');
 
-  const filteredTx = financialTransactions.filter((f) => {
+  const filteredTx = ledger.filter((f) => {
     if (filterType !== 'all' && f.type !== filterType) return false;
     return true;
   });
 
-  const totalIncomes = financialTransactions
+  const totalIncomes = ledger
     .filter((f) => f.type === 'income' && f.status === 'paid')
     .reduce((a, b) => a + b.amount, 0);
 
-  const totalExpenses = financialTransactions
-    .filter((f) => f.type === 'expense')
+  const totalExpenses = ledger
+    .filter((f) => f.type === 'expense' && f.status==='paid')
     .reduce((a, b) => a + b.amount, 0);
 
-  const totalCommissions = financialTransactions
-    .filter((f) => f.type === 'commission')
+  const totalCommissions = ledger
+    .filter((f) => f.type === 'commission' && f.status==='paid')
     .reduce((a, b) => a + b.amount, 0);
 
   const netBalance = totalIncomes - totalExpenses - totalCommissions;
@@ -70,11 +74,11 @@ export const FinancialView: React.FC = () => {
 
   const handleExportCSV = () => {
     const headers = ['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor (R$)', 'Status'];
-    const rows = financialTransactions.map((t) => [
+    const rows = filteredTx.map((t) => [
       t.date,
       t.type === 'income' ? 'Receita' : t.type === 'expense' ? 'Despesa' : 'Comissão',
       t.category,
-      `"${t.description.replace(/"/g, '""')}"`,
+      `"${t.description.replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g, '""')}"`,
       t.amount.toFixed(2),
       t.status === 'paid' ? 'Pago' : 'Pendente',
     ]);
@@ -107,6 +111,7 @@ export const FinancialView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <label className="text-xs font-semibold">Período<select aria-label="Período financeiro" value={period} onChange={e=>setPeriod(e.target.value as 'month'|'all')} className="ml-2 p-2 rounded-xl border border-stone-300 bg-white"><option value="month">Mês atual</option><option value="all">Todo o histórico</option></select></label>
           <button
             onClick={() => setIsPixModalOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-xs"
@@ -120,7 +125,7 @@ export const FinancialView: React.FC = () => {
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-xs"
           >
             <Download className="w-4 h-4" />
-            Exportar Excel/CSV
+            Exportar visão em CSV
           </button>
 
           <button
@@ -151,7 +156,7 @@ export const FinancialView: React.FC = () => {
           <div className="font-display font-bold text-2xl text-emerald-700 tabular-nums">
             {formatCurrencyBRL(totalIncomes)}
           </div>
-          <p className="text-[11px] text-stone-700 mt-1">Atendimentos concluídos</p>
+          <p className="text-[11px] text-stone-700 mt-1">Entradas registradas como pagas no período</p>
         </div>
 
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-xs">
@@ -162,7 +167,7 @@ export const FinancialView: React.FC = () => {
           <div className="font-display font-bold text-2xl text-rose-600 tabular-nums">
             {formatCurrencyBRL(totalExpenses)}
           </div>
-          <p className="text-[11px] text-stone-700 mt-1">Insumos, materiais e custos operacionais</p>
+          <p className="text-[11px] text-stone-700 mt-1">Despesas registradas como pagas no período</p>
         </div>
 
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-xs">
@@ -173,18 +178,18 @@ export const FinancialView: React.FC = () => {
           <div className="font-display font-bold text-2xl text-amber-900 tabular-nums">
             {formatCurrencyBRL(totalCommissions)}
           </div>
-          <p className="text-[11px] text-stone-700 mt-1">Repasses calculados</p>
+          <p className="text-[11px] text-stone-700 mt-1">Comissões registradas como pagas no período</p>
         </div>
 
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-xs">
           <div className="flex items-center justify-between text-stone-700 mb-2">
-            <span className="text-xs font-semibold">Lucro Líquido Real</span>
+            <span className="text-xs font-semibold">Saldo de caixa no período</span>
             <DollarSign className="w-4 h-4 text-stone-900" />
           </div>
           <div className="font-display font-bold text-2xl text-stone-900 tabular-nums">
             {formatCurrencyBRL(netBalance)}
           </div>
-          <p className="text-[11px] text-emerald-700 font-semibold mt-1">Margem operacional saudável</p>
+          <p className="text-[11px] text-stone-600 mt-1">Recebimentos menos despesas e comissões pagas</p>
         </div>
       </div>
 

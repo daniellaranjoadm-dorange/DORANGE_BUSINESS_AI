@@ -1,3 +1,4 @@
+import {localDateKey} from '../utils/businessInsights';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Tenant, 
@@ -791,7 +792,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `dorange_dados_${currentTenant.slug}_${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `dorange_dados_${currentTenant.slug}_${localDateKey(new Date())}.json`;
       a.click();
       URL.revokeObjectURL(url);
       showNotification('Arquivo de exportação LGPD baixado com sucesso!', 'success');
