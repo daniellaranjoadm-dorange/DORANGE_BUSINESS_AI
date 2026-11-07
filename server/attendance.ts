@@ -56,7 +56,11 @@ export function recordPayment(store:Store,id:string,input:{amount:number;payment
 export function completeAttendance(store:Store,id:string,input:{operationKey:string;commissionRate:number;materials:{itemId:string;quantity:number}[]},userId:string){
  if(!validKey(input.operationKey)||!Number.isFinite(input.commissionRate)||input.commissionRate<0||input.commissionRate>100||!Array.isArray(input.materials)||input.materials.length>100)throw new WorkflowError(400,'Revise a comissão e os materiais do atendimento.');
  const snapshot=checkoutSnapshot(store,id);
- if(snapshot.appointment.fulfillment)return {...snapshot,replayed:true};
+ if(snapshot.appointment.fulfillment){
+  if(snapshot.appointment.fulfillment.operationKey!==input.operationKey)
+    throw new WorkflowError(409,'Atendimento já concluído com outra referência de operação.');
+  return {...snapshot,replayed:true};
+}
  if(!Number.isFinite(snapshot.appointment.price)||snapshot.appointment.price<0)throw new WorkflowError(409,'Revise o valor histórico do atendimento antes de concluir.');
  if(!['pending','confirmed'].includes(snapshot.appointment.status))throw new WorkflowError(409,'Este atendimento já foi encerrado. Registros históricos não serão reprocessados.');
  if(new Set(input.materials.map(line=>line?.itemId)).size!==input.materials.length)throw new WorkflowError(400,'Não repita o mesmo insumo na lista.');
@@ -86,7 +90,13 @@ export function settlePayable(store:Store,id:string,operationKey:string,paymentM
  const transaction=store.get('financialTransactions').find(t=>t.id===id);
  if(!transaction)throw new WorkflowError(404,'Lançamento não encontrado.');
  if(transaction.type==='income'||transaction.status==='void')throw new WorkflowError(409,'Este lançamento não é uma despesa ou comissão a pagar.');
- if(transaction.status==='paid')return transaction;
+ if(transaction.status==='paid'){
+  if(!transaction.settlementKey)
+    throw new WorkflowError(409,'Quitação histórica sem referência verificável. Revise antes de repetir.');
+  if(transaction.settlementKey!==operationKey || transaction.paymentMethod!==paymentMethod)
+    throw new WorkflowError(409,'Lançamento já quitado com outra referência ou forma de pagamento.');
+  return transaction;
+}
  if(store.get('financialTransactions').some(t=>t.tenantId===transaction.tenantId&&t.id!==id&&t.settlementKey===operationKey))throw new WorkflowError(409,'Esta referência já foi usada em outro lançamento.');
  store.mutate(data=>{const t=data.financialTransactions.find(t=>t.id===id)!;t.status='paid';t.date=localDateKey(new Date());t.paymentMethod=paymentMethod as FinancialTransaction['paymentMethod'];t.settlementKey=operationKey;audit(data,t.tenantId,'PAYABLE_SETTLED',userId);});
  return store.get('financialTransactions').find(t=>t.id===id)!;

@@ -123,3 +123,163 @@ test('todos os registros anteriores permanecem iguais após as operações',()=>
  const current=JSON.parse(fs.readFileSync(path.join(temporary,'database.json'),'utf8'));
  for(const [key,rows] of Object.entries(baseline))if(Array.isArray(rows))for(const row of rows){if(!row.id)continue;assert.deepEqual(current[key].find((r:any)=>r.id===row.id),row,`${key}/${row.id}`);}
 });
+
+test('R5.3.4 HTTP: rotas de atendimento exigem autenticacao',async()=>{
+ const id='appointment-1';
+ const routes=[
+  ['GET','/api/appointments/'+id+'/checkout'],
+  ['POST','/api/appointments/'+id+'/payments'],
+  ['POST','/api/appointments/'+id+'/complete'],
+  ['PATCH','/api/appointments/'+id],
+  ['POST','/api/financial/fin-inexistente/settle']
+ ];
+ for(const [method,url] of routes){
+  const r=await request(url,method,method==='GET'?undefined:{});
+  assert.equal(r.status,401,method+' '+url);
+ }
+});
+
+test('R5.3.4 HTTP: empresa alheia nao acessa atendimento',async()=>{
+ const a=accounts[0];
+ const routes=[
+  ['GET','/api/appointments/appointment-1/checkout'],
+  ['POST','/api/appointments/appointment-1/payments'],
+  ['POST','/api/appointments/appointment-1/complete'],
+  ['PATCH','/api/appointments/appointment-1']
+ ];
+ for(const [method,url] of routes){
+  const r=await request(url,method,method==='GET'?undefined:{},a.token);
+  assert.equal(r.status,403,method+' '+url);
+ }
+});
+
+test('R5.3.4 HTTP: PATCH rejeita alteracao financeira indevida',async()=>{
+ const a=accounts[0];
+ const appointment=db.get('appointments').find(
+  (item:any)=>item.tenantId===a.tenant.id
+ );
+ assert.ok(appointment,'Empresa de teste precisa possuir agendamento');
+
+ const before=structuredClone(appointment);
+ const r=await request(
+  '/api/appointments/'+appointment.id,
+  'PATCH',
+  {price:1},
+  a.token
+ );
+
+ assert.equal(r.status,400,JSON.stringify(r.data));
+ assert.deepEqual(
+  db.get('appointments').find((item:any)=>item.id===appointment.id),
+  before
+ );
+});
+
+
+test('R5.3.4 HTTP: PATCH autorizado atualiza observacoes',async()=>{
+ const a=accounts[0];
+
+ const appointment=db.get('appointments').find(
+  (item:any)=>item.tenantId===a.tenant.id
+ );
+
+ assert.ok(appointment,'Empresa de teste precisa possuir agendamento');
+
+ const originalNotes=appointment.notes;
+
+ const response=await request(
+  '/api/appointments/'+appointment.id,
+  'PATCH',
+  {notes:'Teste autorizado R5.3.4'},
+  a.token
+ );
+
+ assert.equal(response.status,200,JSON.stringify(response.data));
+ assert.equal(response.data.notes,'Teste autorizado R5.3.4');
+
+ const saved=db.get('appointments').find(
+  (item:any)=>item.id===appointment.id
+ );
+
+ assert.equal(saved.notes,'Teste autorizado R5.3.4');
+
+ // Restaura o registro sintético para não afetar testes posteriores.
+ db.mutate((data:any)=>{
+  const item=data.appointments.find(
+   (row:any)=>row.id===appointment.id
+  );
+  if(item) item.notes=originalNotes;
+ });
+});
+
+
+test('R5.3.4 HTTP: fluxo financeiro completo',async()=>{
+ const a=accounts[0];
+ const service=db.get('services').find(
+  (s:any)=>s.tenantId===a.tenant.id
+ );
+ assert.ok(service);
+
+ const booking=await request('/api/appointments','POST',{
+  tenantId:a.tenant.id,
+  serviceId:service.id,
+  professionalId:a.professional.id,
+  customerName:'Cliente Financeiro R534',
+  customerPhone:'51988887777',
+  date:'2027-01-15',
+  time:'10:00'
+ });
+
+ assert.equal(booking.status,201,JSON.stringify(booking.data));
+
+ const appointment=db.get('appointments').find(
+  (item:any)=>
+   item.tenantId===a.tenant.id &&
+   item.date==='2027-01-15' &&
+   item.time==='10:00' &&
+   item.customerName==='Cliente Financeiro R534'
+ );
+
+ assert.ok(appointment,'Agendamento de teste nao encontrado');
+
+ const id=appointment.id;
+ const url='/api/appointments/'+id;
+
+ const checkout=await request(url+'/checkout','GET',undefined,a.token);
+ assert.equal(checkout.status,200,JSON.stringify(checkout.data));
+
+ const payment={
+  amount:10,
+  paymentMethod:'pix',
+  operationKey:'r534-http-payment-001'
+ };
+
+ const paid=await request(url+'/payments','POST',payment,a.token);
+ assert.equal(paid.status,200,JSON.stringify(paid.data));
+
+ const repeated=await request(url+'/payments','POST',payment,a.token);
+ assert.equal(repeated.status,200);
+ assert.equal(repeated.data.replayed,true);
+
+ const completed=await request(url+'/complete','POST',{
+  operationKey:'r534-http-complete-001',
+  commissionRate:10,
+  materials:[]
+ },a.token);
+
+ assert.equal(completed.status,200,JSON.stringify(completed.data));
+ assert.equal(completed.data.appointment.status,'completed');
+
+ const saved=db.get('appointments').find((item:any)=>item.id===id);
+ assert.equal(saved.status,'completed');
+
+ const incomes=db.get('financialTransactions').filter(
+  (t:any)=>t.appointmentId===id && t.type==='income' && t.status==='paid'
+ );
+ assert.equal(incomes.length,1);
+
+ const commissions=db.get('financialTransactions').filter(
+  (t:any)=>t.appointmentId===id && t.type==='commission'
+ );
+ assert.ok(commissions.length<=1);
+});
