@@ -35,6 +35,19 @@ export const NewAppointmentModal: React.FC<Props> = ({
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [resources, setResources] = useState<any[]>([]);
+  const [selectedResourceId, setSelectedResourceId] = useState<string>('');
+
+  React.useEffect(() => {
+    if (currentTenant?.id) {
+      fetch(`/api/resources?tenantId=${currentTenant.id}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setResources(data.filter((res: any) => res.active));
+        })
+        .catch(() => {});
+    }
+  }, [currentTenant?.id]);
 
   if (!isOpen) return null;
 
@@ -63,7 +76,8 @@ export const NewAppointmentModal: React.FC<Props> = ({
         notes,
         isDomicile,
         address,
-      });
+        ...(selectedResourceId ? { resourceId: selectedResourceId } : {}),
+      } as any);
       onClose();
     } catch (err: any) {
       setErrorMessage(err.message || 'Erro ao realizar agendamento.');
@@ -145,6 +159,26 @@ export const NewAppointmentModal: React.FC<Props> = ({
               </select>
             </div>
           </div>
+
+          {resources.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                Recurso Compartilhado (Cadeira, Maca ou Sala)
+              </label>
+              <select
+                value={selectedResourceId}
+                onChange={(e) => setSelectedResourceId(e.target.value)}
+                className="w-full text-xs font-medium px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl outline-none"
+              >
+                <option value="">Automático / Qualquer disponível</option>
+                {resources.map((res: any) => (
+                  <option key={res.id} value={res.id}>
+                    {res.name} ({res.type === 'chair' ? 'Cadeira' : res.type === 'room' ? 'Sala' : res.type === 'stretcher' ? 'Maca' : 'Equipamento'} — Cap. {res.capacity || 1})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

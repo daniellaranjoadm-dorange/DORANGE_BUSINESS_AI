@@ -31,6 +31,7 @@ import { Appointment } from '../types';
 export const DashboardView: React.FC = () => {
   const { 
     currentTenant, 
+    currentSegment,
     appointments, 
     services, 
     customers, 
@@ -62,41 +63,68 @@ export const DashboardView: React.FC = () => {
   const confirmedToday = todayAppointments.filter((a) => a.status === 'confirmed');
   const pendingToday = todayAppointments.filter((a) => a.status === 'pending');
   const completedToday = todayAppointments.filter((a) => a.status === 'completed');
+  const cancelledCount = appointments.filter((a) => a.status === 'cancelled').length;
 
   // Horários disponíveis hoje (vagas ociosas)
   const standardSlots = ['09:00', '10:30', '13:30', '15:00', '16:30', '18:00'];
   const bookedTimes = todayAppointments.map(a => a.time);
   const freeSlotsToday = standardSlots.filter(s => !bookedTimes.includes(s));
 
-  // Métricas financeiras e operacionais
+  // Métricas financeiras e operacionais 100% REAIS (sem valores arbitrários)
   const totalMonthRevenue = financialTransactions
     .filter((f) => f.type === 'income' && f.status === 'paid')
     .reduce((acc, f) => acc + f.amount, 0);
+
+  const totalExpenses = financialTransactions
+    .filter((f) => f.type === 'expense')
+    .reduce((acc, f) => acc + f.amount, 0);
+
+  const netBalance = totalMonthRevenue - totalExpenses;
 
   const pendingRevenue = appointments
     .filter((a) => a.status !== 'cancelled' && a.paymentStatus !== 'paid')
     .reduce((acc, a) => acc + a.price, 0);
 
   const completedCount = appointments.filter((a) => a.status === 'completed').length;
-  const ticketMedio = completedCount > 0 ? totalMonthRevenue / completedCount : 85;
+  const ticketMedio = completedCount > 0 ? totalMonthRevenue / completedCount : 0;
 
   // Itens com estoque baixo
   const lowStockItems = inventory.filter((i) => i.quantity <= i.minQuantity);
 
-  // Top Serviços mais populares
-  const topServices = services.slice(0, 4);
+  // Top Serviços mais populares calculados a partir de agendamentos reais
+  const serviceSalesCount = appointments
+    .filter((a) => a.status === 'completed' || a.status === 'confirmed')
+    .reduce((acc: Record<string, number>, a) => {
+      acc[a.serviceName] = (acc[a.serviceName] || 0) + 1;
+      return acc;
+    }, {});
+  
+  const topServices = Object.entries(serviceSalesCount)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 4)
+    .map(([name, count]) => {
+      const svc = services.find((s) => s.name === name);
+      return {
+        id: svc?.id || name,
+        name,
+        category: svc?.category || 'Serviços',
+        price: svc?.price || 0,
+        count,
+      };
+    });
 
-  // Gráfico de faturamento semanal simples e elegante (Últimos 7 dias)
-  const weekDays = [
-    { day: 'Seg', amount: totalMonthRevenue * 0.12 },
-    { day: 'Ter', amount: totalMonthRevenue * 0.15 },
-    { day: 'Qua', amount: totalMonthRevenue * 0.18 },
-    { day: 'Qui', amount: totalMonthRevenue * 0.22 },
-    { day: 'Sex', amount: totalMonthRevenue * 0.25 },
-    { day: 'Sáb', amount: totalMonthRevenue * 0.28 },
-    { day: 'Dom', amount: 0 },
-  ];
-  const maxDayAmount = Math.max(...weekDays.map(d => d.amount), 100);
+  // Histórico real dos últimos 7 dias a partir das transações pagas
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const dStr = d.toISOString().split('T')[0];
+    const dayLabel = d.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0, 3);
+    const amount = financialTransactions
+      .filter((f) => f.type === 'income' && f.status === 'paid' && f.date === dStr)
+      .reduce((sum, f) => sum + f.amount, 0);
+    return { day: dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), date: dStr, amount };
+  });
+  const maxDayAmount = Math.max(...weekDays.map(d => d.amount), 50);
 
   const handleOpenClientPortal = () => {
     if (currentTenant) {
@@ -107,7 +135,7 @@ export const DashboardView: React.FC = () => {
 
   const handleQuickWhatsAppShare = () => {
     if (!currentTenant) return;
-    const url = `https://ais-pre-libbee3a4xtfsd4fskif7o-181264991107.us-east1.run.app/${currentTenant.slug}`;
+    const url = `${window.location.origin}/${currentTenant.slug}`;
     const message = `Olá! ✨ Horários disponíveis para esta semana no *${currentTenant.tradeName}*! Agende pelo nosso link exclusivo:\n\n👉 ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
@@ -170,10 +198,10 @@ export const DashboardView: React.FC = () => {
       {/* 2. Grid de Métricas Principais (Cards Compactos & Valores Tabulares) */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
         
-        {/* Atendimentos Hoje */}
+        {/* 1. Atendimentos Hoje */}
         <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-1">
-            <span className="text-[11px] font-semibold">Atendimentos Hoje</span>
+            <span className="text-[11px] font-semibold">{currentSegment.terminology.appointmentPlural} Hoje</span>
             <Calendar className="w-3.5 h-3.5 text-amber-700" />
           </div>
           <div className="font-display font-bold text-2xl text-[#17191F] tabular-nums">
@@ -186,78 +214,102 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* Faturamento Realizado */}
+        {/* 2. Faturamento Realizado */}
         <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-1">
-            <span className="text-[11px] font-semibold">Faturamento Recebido</span>
+            <span className="text-[11px] font-semibold">Receita Liquidada</span>
             <DollarSign className="w-3.5 h-3.5 text-emerald-700" />
           </div>
-          <div className="font-display font-bold text-xl text-[#17191F] tabular-nums">
+          <div className="font-display font-bold text-xl text-emerald-800 tabular-nums">
             {formatCurrencyBRL(totalMonthRevenue)}
           </div>
           <div className="text-[10px] text-emerald-800 font-medium mt-1">
-            Mês atual liquidado
+            Entradas quitadas
           </div>
         </div>
 
-        {/* Receita Prevista */}
+        {/* 3. Despesas & Insumos */}
+        <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
+          <div className="flex items-center justify-between text-[#667085] mb-1">
+            <span className="text-[11px] font-semibold">Despesas do Mês</span>
+            <TrendingUp className="w-3.5 h-3.5 text-rose-600" />
+          </div>
+          <div className="font-display font-bold text-xl text-rose-700 tabular-nums">
+            {formatCurrencyBRL(totalExpenses)}
+          </div>
+          <div className="text-[10px] text-stone-500 mt-1">
+            Custos operacionais
+          </div>
+        </div>
+
+        {/* 4. Resultado Financeiro Líquido */}
+        <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
+          <div className="flex items-center justify-between text-[#667085] mb-1">
+            <span className="text-[11px] font-semibold">Resultado Líquido</span>
+            <DollarSign className="w-3.5 h-3.5 text-stone-900" />
+          </div>
+          <div className={`font-display font-bold text-xl tabular-nums ${netBalance >= 0 ? 'text-stone-900' : 'text-rose-600'}`}>
+            {formatCurrencyBRL(netBalance)}
+          </div>
+          <div className="text-[10px] text-[#667085] mt-1">
+            Receitas - Despesas
+          </div>
+        </div>
+
+        {/* 5. Receita Prevista */}
         <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-1">
             <span className="text-[11px] font-semibold">Receita Prevista</span>
-            <TrendingUp className="w-3.5 h-3.5 text-amber-700" />
+            <Clock className="w-3.5 h-3.5 text-amber-700" />
           </div>
           <div className="font-display font-bold text-xl text-amber-900 tabular-nums">
             {formatCurrencyBRL(pendingRevenue)}
           </div>
           <div className="text-[10px] text-[#667085] mt-1">
-            A receber nos agendamentos
+            A receber nos horários
           </div>
         </div>
 
-        {/* Ticket Médio */}
+        {/* 6. Cancelamentos */}
+        <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
+          <div className="flex items-center justify-between text-[#667085] mb-1">
+            <span className="text-[11px] font-semibold">Cancelamentos</span>
+            <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
+          </div>
+          <div className="font-display font-bold text-2xl text-stone-800 tabular-nums">
+            {cancelledCount}
+          </div>
+          <div className="text-[10px] text-[#667085] mt-1">
+            Total histórico
+          </div>
+        </div>
+
+        {/* 7. Ticket Médio Real */}
         <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-1">
             <span className="text-[11px] font-semibold">Ticket Médio</span>
             <BarChart3 className="w-3.5 h-3.5 text-[#667085]" />
           </div>
           <div className="font-display font-bold text-xl text-[#17191F] tabular-nums">
-            {formatCurrencyBRL(ticketMedio)}
+            {completedCount > 0 ? formatCurrencyBRL(ticketMedio) : 'R$ 0,00'}
           </div>
           <div className="text-[10px] text-[#667085] mt-1">
-            Por atendimento
+            {completedCount > 0 ? `${completedCount} concluídos` : 'Sem concluídos'}
           </div>
         </div>
 
-        {/* Clientes Ativos */}
+        {/* 8. Clientes na Base */}
         <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-1">
-            <span className="text-[11px] font-semibold">Clientes na Base</span>
+            <span className="text-[11px] font-semibold">{currentSegment.terminology.customerSingular}s</span>
             <Users className="w-3.5 h-3.5 text-rose-600" />
           </div>
           <div className="font-display font-bold text-2xl text-[#17191F] tabular-nums">
             {customers.length}
           </div>
           <div className="text-[10px] text-[#667085] mt-1">
-            Histórico registrado
+            Cadastros ativos
           </div>
-        </div>
-
-        {/* Vagas Livres Hoje */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
-          <div className="flex items-center justify-between text-[#667085] mb-1">
-            <span className="text-[11px] font-semibold">Horários Livres Hoje</span>
-            <Clock className="w-3.5 h-3.5 text-amber-700" />
-          </div>
-          <div className="font-display font-bold text-2xl text-amber-900 tabular-nums">
-            {freeSlotsToday.length}
-          </div>
-          <button
-            onClick={() => setActiveTab('marketing')}
-            className="text-[10px] text-amber-800 hover:underline font-semibold mt-1 flex items-center gap-0.5"
-          >
-            <span>Preencher c/ IA</span>
-            <ArrowUpRight className="w-3 h-3" />
-          </button>
         </div>
 
       </div>
@@ -446,7 +498,9 @@ export const DashboardView: React.FC = () => {
           {/* Procedimentos Mais Procurados */}
           <div className="bg-white rounded-2xl border border-[#E6E8EC] p-4 shadow-2xs space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-[#17191F]">Técnicas Mais Vendidas</span>
+              <span className="font-bold text-xs text-[#17191F]">
+                {currentSegment.terminology.servicePlural} Mais Vendidos
+              </span>
               <button
                 onClick={() => setActiveTab('catalog')}
                 className="text-[10px] font-semibold text-[#667085] hover:text-[#17191F]"
@@ -455,19 +509,29 @@ export const DashboardView: React.FC = () => {
               </button>
             </div>
             
-            <div className="space-y-2">
-              {topServices.map((s, idx) => (
-                <div key={s.id} className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-stone-50 transition">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-stone-100 text-[#17191F] font-bold text-[10px] flex items-center justify-center shrink-0">
-                      {idx + 1}
-                    </span>
-                    <span className="font-semibold text-[#17191F] truncate max-w-[140px]">{s.name}</span>
+            {topServices.length === 0 ? (
+              <div className="py-4 text-center space-y-1 bg-stone-50 rounded-xl border border-dashed border-stone-200">
+                <p className="text-xs font-semibold text-[#17191F]">Sem histórico de vendas ainda</p>
+                <p className="text-[11px] text-[#667085]">À medida que os horários forem concluídos, o ranking aparecerá aqui.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {topServices.map((s, idx) => (
+                  <div key={s.id} className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-stone-50 transition">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-stone-100 text-[#17191F] font-bold text-[10px] flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <div>
+                        <span className="font-semibold text-[#17191F] truncate block max-w-[140px]">{s.name}</span>
+                        <span className="text-[10px] text-[#667085]">{s.count} atendimento{s.count > 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
+                    <span className="font-bold text-[#17191F] tabular-nums">{formatCurrencyBRL(s.price)}</span>
                   </div>
-                  <span className="font-bold text-[#17191F] tabular-nums">{formatCurrencyBRL(s.price)}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Importação Inteligente & Tendências RS */}

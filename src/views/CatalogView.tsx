@@ -19,7 +19,14 @@ import { MarketBenchmarkModal } from '../components/MarketBenchmarkModal';
 import { Service } from '../types';
 
 export const CatalogView: React.FC = () => {
-  const { currentTenant, services, createService, updateService, deleteService, showNotification } = useApp();
+  const { currentTenant, currentSegment, services, createService, updateService, deleteService, showNotification } = useApp();
+
+  const segmentCategories = Array.from(new Set([
+    ...(currentSegment ? currentSegment.suggestedServices.map((s) => s.category) : []),
+    ...services.map((s) => s.category).filter(Boolean),
+  ]));
+
+  const categories = ['all', ...(segmentCategories.length > 0 ? segmentCategories : ['Geral', 'Serviços'])];
 
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -30,13 +37,11 @@ export const CatalogView: React.FC = () => {
 
   // Formulário de novo serviço
   const [newServiceName, setNewServiceName] = useState('');
-  const [newCategory, setNewCategory] = useState('Manicure');
+  const [newCategory, setNewCategory] = useState(segmentCategories[0] || 'Geral');
   const [newPrice, setNewPrice] = useState('50');
   const [newDuration, setNewDuration] = useState('45');
   const [newImageUrl,setNewImageUrl] = useState('');
   const [newDescription, setNewDescription] = useState('');
-
-  const categories = ['all', 'Manicure', 'Pedicure', 'Alongamento', 'Gel & Blindagem', 'Nail Art', 'Combos'];
 
   const filteredServices = services.filter((s) => {
     if (categoryFilter !== 'all' && s.category !== categoryFilter) return false;

@@ -21,7 +21,7 @@ import {
 import { MarketingPost } from '../types';
 
 export const MarketingAiView: React.FC = () => {
-  const { currentTenant, marketingPosts, createMarketingPost, showNotification } = useApp();
+  const { currentTenant, currentSegment, marketingPosts, createMarketingPost, showNotification } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'studio' | 'calendar' | 'slots_campaign' | 'connections' | 'analytics'>('studio');
   const [topic, setTopic] = useState('');
@@ -188,16 +188,71 @@ export const MarketingAiView: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">
-                Sobre o que você deseja falar? *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-stone-700">
+                  Sobre o que você deseja falar? *
+                </label>
+                <span className="text-[10px] text-stone-700 font-medium">
+                  Segmento: {currentSegment?.name || 'Geral'}
+                </span>
+              </div>
               <textarea
                 rows={3}
-                placeholder="Ex: Cuidados pós-alongamento de fibra no inverno do RS, importância da manutenção a cada 21 dias, agenda aberta..."
+                placeholder={
+                  currentSegment?.id === 'barber'
+                    ? "Ex: Tendências de corte fade degradê, barba alinhada com toalha quente, horários de sábado abertos..."
+                    : currentSegment?.id === 'beauty'
+                    ? "Ex: Cronograma capilar, reconstrução pós-química, mechas e hidratação profunda para o fim de semana..."
+                    : currentSegment?.id === 'brows_lashes'
+                    ? "Ex: Durabilidade do lash lifting, design personalizado de sobrancelhas, valorização do olhar..."
+                    : currentSegment?.id === 'esthetics'
+                    ? "Ex: Benefícios da limpeza de pele profunda, protocolo de rejuvenescimento facial, cuidados diários..."
+                    : currentSegment?.id === 'massage'
+                    ? "Ex: Alívio de tensões nas costas com massagem relaxante, drenagem linfática e autocuidado..."
+                    : currentSegment?.id === 'home_services'
+                    ? "Ex: Praticidade e conforto do atendimento exclusivo a domicílio, otimização do seu tempo..."
+                    : "Ex: Cuidados pós-alongamento de unhas, manutenção a cada 21 dias, agenda da semana aberta..."
+                }
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 className="w-full text-xs p-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:bg-white focus:border-amber-600 transition-all"
               />
+
+              {/* Sugestões Rápidas de Pauta por Segmento */}
+              <div className="mt-2 space-y-1.5">
+                <span className="text-[10px] font-semibold text-stone-700 block">
+                  Sugestões rápidas de temas:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    {
+                      label: '🔥 Vagas de Fim de Semana',
+                      prompt: `Poucos horários disponíveis para este fim de semana em ${currentSegment?.name || 'nosso espaço'}. Garanta seu agendamento no link da bio!`,
+                    },
+                    {
+                      label: '🔄 Resgate de Clientes Inativos',
+                      prompt: `Sentimos sua falta! Especial para retorno: venha renovar seus cuidados de ${currentSegment?.terminology?.servicePlural || 'serviços'} com condição exclusiva este mês.`,
+                    },
+                    {
+                      label: '💡 Dica do Especialista',
+                      prompt: `Dica profissional: como cuidar e prolongar os resultados do seu ${currentSegment?.terminology?.serviceSingular || 'atendimento'} no dia a dia.`,
+                    },
+                    {
+                      label: '🎂 Aniversariantes do Mês',
+                      prompt: `Faz aniversário este mês? Agende seu momento especial de ${currentSegment?.terminology?.serviceSingular || 'beleza'} e receba um mimo exclusivo.`,
+                    },
+                  ].map((sug, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setTopic(sug.prompt)}
+                      className="px-2.5 py-1 text-[11px] font-medium bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors border border-stone-200/60"
+                    >
+                      {sug.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div>

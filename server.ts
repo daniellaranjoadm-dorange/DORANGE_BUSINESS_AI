@@ -195,6 +195,7 @@ app.post('/api/tenants', onboardingLimit, async (req,res,next)=>{
     const grant=onboardingGrant(req);if(!grant){res.status(401).json({error:'Inicie uma sessão de cadastro'});return;}
     const body=req.body;
     if(!body.name||!body.tradeName||typeof body.email!=='string'||!/^\S+@\S+\.\S+$/.test(body.email)||!BUSINESS_SEGMENTS[body.businessSegment as BusinessSegmentId]){res.status(400).json({error:'Dados comerciais ou segmento inválidos'});return;}
+    if(typeof body.passwordConfirmation==='string'&&body.password!==body.passwordConfirmation){res.status(400).json({error:'A confirmação de senha não confere com a senha informada.'});return;}
     const passwordHash=await hashPassword(body.password);
     const email=body.email.trim().toLowerCase();
     if(db.get('users').some(u=>u.email.toLowerCase()===email)){res.status(409).json({error:'E-mail já cadastrado'});return;}
@@ -204,11 +205,11 @@ app.post('/api/tenants', onboardingLimit, async (req,res,next)=>{
     const breakStart=body.breakStart??'12:30',breakEnd=body.breakEnd??'13:30';
     if(!validTime(open)||!validTime(close)||open>=close||(breakStart||breakEnd)&&(!validTime(breakStart)||!validTime(breakEnd)||breakStart<open||breakEnd>close||breakStart>=breakEnd)||!Number.isInteger(body.bufferMinutes??10)||(body.bufferMinutes??10)<0||(body.bufferMinutes??10)>120){res.status(400).json({error:'Horários, pausas ou intervalo inválidos'});return;}
     const tenantId=grant.tenantId;const professionalId='prof-'+crypto.randomUUID();
-    const image=(value:any)=>!value?'':typeof value==='string'&&((value.startsWith('/api/uploads/'+tenantId+'/')&&!value.includes('..'))||/^https:\/\//.test(value))?value:null;
+    const image=(value:any)=>!value?'':typeof value==='string'&&((value.startsWith('/api/uploads/'+tenantId+'/')&&!value.includes('..'))||value.startsWith('/images/')||/^https:\/\//.test(value))?value:null;
     if(image(body.logoUrl)===null||image(body.coverUrl)===null){res.status(400).json({error:'Imagem não pertence ao cadastro'});return;}
     const businessHours=Object.fromEntries(Array.from({length:7},(_,day)=>[day,{open:day!==0,start:open,end:close,...(breakStart?{breakStart,breakEnd}:{})}]));
     const slugBase=String(body.tradeName).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'negocio';
-    const tenant:Tenant={id:tenantId,name:String(body.name).slice(0,200),tradeName:String(body.tradeName).slice(0,200),slug:slugBase+'-'+crypto.randomBytes(4).toString('hex'),email,document:String(body.document||''),documentType:body.documentType==='CNPJ'?'CNPJ':'CPF',phone:String(body.phone||''),whatsapp:String(body.whatsapp||body.phone||'').replace(/\D/g,''),city:String(body.city||''),state:String(body.state||''),address:String(body.address||''),serviceType:['domicile','both'].includes(body.serviceType)?body.serviceType:'establishment',businessSegment:body.businessSegment,logoUrl:image(body.logoUrl)!,coverUrl:image(body.coverUrl)||'/images/dorange_hero_studio_1793885623392.jpg',primaryColor:/^#[a-fA-F0-9]{6}$/.test(body.primaryColor)?body.primaryColor:'#D97706',secondaryColor:/^#[a-fA-F0-9]{6}$/.test(body.secondaryColor)?body.secondaryColor:'#FFFBEB',description:config.tagline,planId:'free',status:'trial',createdAt:new Date().toISOString(),businessHours,bufferBetweenAppointmentsMinutes:body.bufferMinutes??config.defaultSettings?.bufferBetweenMinutes??10,whatsappMode:'personal',loyaltyProgramEnabled:true,loyaltyPointsPerReal:1,loyaltyRewardThreshold:100,loyaltyRewardDescription:'Desconto no próximo atendimento'};
+    const tenant:Tenant={id:tenantId,name:String(body.name).slice(0,200),tradeName:String(body.tradeName).slice(0,200),slug:slugBase+'-'+crypto.randomBytes(4).toString('hex'),email,document:String(body.document||''),documentType:body.documentType==='CNPJ'?'CNPJ':'CPF',phone:String(body.phone||''),whatsapp:String(body.whatsapp||body.phone||'').replace(/\D/g,''),city:String(body.city||''),state:String(body.state||''),address:String(body.address||''),cep:String(body.cep||'').slice(0,10),neighborhood:String(body.neighborhood||'').slice(0,100),serviceType:['domicile','both'].includes(body.serviceType)?body.serviceType:'establishment',businessSegment:body.businessSegment,logoUrl:image(body.logoUrl)!,coverUrl:image(body.coverUrl)||'/images/dorange_hero_studio_1793885623392.jpg',primaryColor:/^#[a-fA-F0-9]{6}$/.test(body.primaryColor)?body.primaryColor:'#D97706',secondaryColor:/^#[a-fA-F0-9]{6}$/.test(body.secondaryColor)?body.secondaryColor:'#FFFBEB',description:config.tagline,planId:'free',status:'trial',createdAt:new Date().toISOString(),businessHours,bufferBetweenAppointmentsMinutes:body.bufferMinutes??config.defaultSettings?.bufferBetweenMinutes??10,whatsappMode:'personal',loyaltyProgramEnabled:true,loyaltyPointsPerReal:1,loyaltyRewardThreshold:100,loyaltyRewardDescription:'Desconto no próximo atendimento'};
     const preset=config.suggestedServices.filter(s=>!Array.isArray(body.selectedServiceNames)||body.selectedServiceNames.includes(s.name)).map(s=>({name:s.name,category:s.category,description:s.description,durationMinutes:s.defaultDurationMinutes,price:s.suggestedPriceBRL,costBRL:s.estimatedCostBRL}));
     const input=Array.isArray(body.customServices)?body.customServices:preset;
     if(input.length>100||input.some((s:any)=>typeof s.name!=='string'||!s.name.trim()||!Number.isFinite(s.price)||s.price<0||!Number.isInteger(s.durationMinutes)||s.durationMinutes<5||s.durationMinutes>720)){res.status(400).json({error:'Serviços inválidos'});return;}
@@ -223,7 +224,11 @@ app.post('/api/tenants', onboardingLimit, async (req,res,next)=>{
       for(const name of stocks[body.businessSegment])d.inventory.push({id:'inv-'+crypto.randomUUID(),tenantId,name,category:'Outros',unit:'un',quantity:0,minQuantity:0,unitCost:0});
     });
     consumeGrant(req);const token=createSession(user);setSessionCookie(res,token);res.status(201).json({tenant,professional,user:safeUser(user),token});
-  }catch(error){if(error instanceof Error&&error.message.startsWith('A senha')){res.status(400).json({error:error.message});return;}next(error);}
+  }catch(error){
+    if(error instanceof Error&&error.message.startsWith('A senha')){res.status(400).json({error:error.message});return;}
+    if(error instanceof Error&&error.message==='Cadastro já existente'){res.status(409).json({error:'Cadastro já existente ou em processamento'});return;}
+    next(error);
+  }
 });
 app.patch('/api/tenants/:id', (req: AuthenticatedRequest, res: Response) => {
   if(req.body.businessSegment && !BUSINESS_SEGMENTS[req.body.businessSegment as BusinessSegmentId]){res.status(400).json({error:'Segmento inválido'});return;}
@@ -597,6 +602,31 @@ app.post('/api/appointments', rateLimit(30, 60000), async (req: Request, res: Re
       return;
     }
 
+    // 3. Verificação de conflito de recursos físicos compartilhados (cadeiras, macas, salas, equipamentos)
+    const resourceId = typeof req.body.resourceId === 'string' && req.body.resourceId.trim() ? req.body.resourceId.trim() : undefined;
+    let allocatedResource: any = null;
+    if (resourceId) {
+      const resources = (db.get('physicalResources') as any[]) || [];
+      allocatedResource = resources.find((r: any) => r.id === resourceId && r.tenantId === tenantId && r.active);
+      if (!allocatedResource) {
+        res.status(404).json({ error: 'Recurso físico (cadeira, maca, sala) não encontrado ou inativo.' });
+        return;
+      }
+      const resourceOverlaps = db.get('appointments').filter((existing) => {
+        if (existing.tenantId !== tenantId || existing.resourceId !== resourceId) return false;
+        if (existing.date !== date || existing.status === 'cancelled') return false;
+        const existingStart = timeToMinutes(existing.time);
+        const existingEnd = existingStart + existing.durationMinutes + buffer;
+        return newStart < existingEnd && newEnd > existingStart;
+      });
+      if (resourceOverlaps.length >= (allocatedResource.capacity || 1)) {
+        res.status(409).json({
+          error: `O recurso compartilhado "${allocatedResource.name}" atingiu a capacidade máxima no horário selecionado. Por favor, selecione outro recurso ou horário.`,
+        });
+        return;
+      }
+    }
+
     let customerId = '';
     let newAppointment!: Appointment;
     db.mutate((d) => {
@@ -644,6 +674,8 @@ app.post('/api/appointments', rateLimit(30, 60000), async (req: Request, res: Re
       inspirationPhotoUrl: inspirationPhotoUrl || '',
       createdAt: new Date().toISOString(),
       paymentStatus: 'pending',
+      resourceId: allocatedResource ? allocatedResource.id : undefined,
+      resourceName: allocatedResource ? allocatedResource.name : undefined,
     };
 
       d.appointments.push(newAppointment);
@@ -733,6 +765,25 @@ app.patch('/api/appointments/:id/reschedule', async (req: Request, res: Response
     if (blocked) {
       res.status(409).json({ error: `Horário bloqueado (${blocked.reason}). Escolha outro horário.` });
       return;
+    }
+
+    // Conflito de recurso físico no reagendamento
+    if (appt.resourceId) {
+      const resources = (db.get('physicalResources') as any[]) || [];
+      const resObj = resources.find((r: any) => r.id === appt.resourceId && r.active);
+      if (resObj) {
+        const resOverlaps = db.get('appointments').filter((existing) => {
+          if (existing.id === appointmentId || existing.tenantId !== appt.tenantId || existing.resourceId !== appt.resourceId) return false;
+          if (existing.date !== date || existing.status === 'cancelled') return false;
+          const existingStart = timeToMinutes(existing.time);
+          const existingEnd = existingStart + existing.durationMinutes + buffer;
+          return newStart < existingEnd && newEnd > existingStart;
+        });
+        if (resOverlaps.length >= (resObj.capacity || 1)) {
+          res.status(409).json({ error: `O recurso compartilhado "${resObj.name}" não está disponível neste novo horário.` });
+          return;
+        }
+      }
     }
 
     let updated: Appointment | null = null;
@@ -1651,13 +1702,19 @@ Regras:
     } catch (e) {
       source = 'local';
       if (segId === 'barber') {
-        copy = `💈 *AGENDA ABERTA PARA ESSA SEMANA NA ${tenant?.tradeName.toUpperCase()}!* ✂️\n\nDegradê alinhado, barba na toalha quente e aquele visual impecável para o seu fim de semana.\n\nRestam poucos horários disponíveis na nossa cadeira em ${tenant?.city}!\n\n👉 Reserve agora mesmo pelo nosso link exclusivo:\n🔗 dorange.ai/${tenant?.slug}\n\n#barbearia #cabeloebarba #degrade #barbershop #${tenant?.city.toLowerCase().replace(/\s/g, '')}`;
+        copy = `💈 *AGENDA ABERTA PARA ESSA SEMANA NA ${tenant?.tradeName.toUpperCase()}!* ✂️\n\nDegradê alinhado, barba na toalha quente e aquele visual impecável para o seu fim de semana.\n\nRestam poucos horários disponíveis na nossa cadeira em ${tenant?.city}!\n\n👉 Reserve agora mesmo pelo nosso link exclusivo:\n🔗 ${tenant?.slug}\n\n#barbearia #cabeloebarba #degrade #barbershop #${tenant?.city.toLowerCase().replace(/\s/g, '')}`;
       } else if (segId === 'beauty') {
         copy = `✨ *Seu cabelo merece o melhor cuidado e luminosidade.* 💇‍♀️\n\nNo ${tenant?.tradeName}, realizamos diagnósticos personalizados para realçar o que há de mais bonito em você.\n\n📅 Garanta seu horário com a nossa equipe de especialistas.\n👉 Agende pelo link da nossa bio!\n\n#salaodebeleza #cabelosaudavel #mechas #${tenant?.city.toLowerCase().replace(/\s/g, '')}`;
+      } else if (segId === 'brows_lashes') {
+        copy = `👁️ *Realce a beleza natural do seu olhar no ${tenant?.tradeName}!* ✨\n\nDesign anatômico de sobrancelhas, Brow Lamination e extensões de cílios com máxima leveza e biossegurança.\n\n📅 Poucos horários disponíveis nesta semana em ${tenant?.city}!\n👉 Reserve agora mesmo pelo link da bio!\n\n#sobrancelhas #lashlifting #cilios #lashdesigner #${tenant?.city.toLowerCase().replace(/\s/g, '')}`;
+      } else if (segId === 'esthetics') {
+        copy = `🌸 *Pele renovada, viçosa e saudável no ${tenant?.tradeName}!* 💆‍♀️\n\nLimpeza de pele profunda, hidratação avançada e protocolos faciais e corporais personalizados para você.\n\n📅 Agende seu momento de cuidado e bem-estar em ${tenant?.city}.\n👉 Link de agendamento na bio!\n\n#esteticafacial #limpezadepele #peeling #cuidadoscomapele #${tenant?.city.toLowerCase().replace(/\s/g, '')}`;
       } else if (segId === 'massage') {
         copy = `🌿 *Permita-se desacelerar e renovar suas energias.* 🧘\n\nNo ${tenant?.tradeName}, cada sessão de massoterapia é pensada para aliviar o estresse, as dores musculares e restaurar seu bem-estar integral.\n\n📅 Agende seu momento de cuidado exclusivo:\n👉 Link na bio!\n\n#massoterapia #bemestar #relaxamento #${tenant?.city.toLowerCase().replace(/\s/g, '')}`;
+      } else if (segId === 'home_services') {
+        copy = `🚗 *Atendimento exclusivo no conforto da sua casa com ${tenant?.tradeName}!* 🏡✨\n\nPontualidade, materiais 100% esterilizados e o melhor atendimento sem você precisar enfrentar trânsito em ${tenant?.city}.\n\n📅 Reserve sua visita com antecedência:\n👉 Link na bio!\n\n#atendimentodomiciliar #homecare #comodidade #${tenant?.city.toLowerCase().replace(/\s/g, '')}`;
       } else {
-        copy = `Conheça ${segment.name} no ${tenant?.tradeName}. Atendimento personalizado e cuidado com cada detalhe. Consulte os serviços e a disponibilidade pelo link da bio. #atendimentopersonalizado`; 
+        copy = `💅 *Unhas impecáveis com acabamento premium e durabilidade no ${tenant?.tradeName}!* ✨\n\nAlongamento em fibra de vidro, blindagem e esmaltação em gel com atendimento personalizado em ${tenant?.city}.\n\n📅 Garanta seu horário para a semana:\n👉 Agende pelo link na bio!\n\n#unhas #nailart #alongamentoemgel #${tenant?.city.toLowerCase().replace(/\s/g, '')}`; 
       }
     }
 
@@ -1666,9 +1723,15 @@ Regras:
       ? ['#barbearia', '#barbershop', '#corteebarba', '#fade', `#barbearia${citySlug}`]
       : segId === 'beauty'
       ? ['#salaodebeleza', '#cabelo', '#loirosaudavel', '#escovamodelada', `#salao${citySlug}`]
+      : segId === 'brows_lashes'
+      ? ['#sobrancelhas', '#lashlifting', '#ciliosfioafio', '#designdesobrancelhas', `#olhar${citySlug}`]
+      : segId === 'esthetics'
+      ? ['#esteticafacial', '#limpezadepele', '#skincare', '#esteticacorporal', `#estetica${citySlug}`]
       : segId === 'massage'
       ? ['#massoterapia', '#relaxamento', '#spa', '#drenagem', `#bemestar${citySlug}`]
-      : ['#atendimentopersonalizado', '#agendamento', `#${citySlug}`];
+      : segId === 'home_services'
+      ? ['#atendimentodomiciliar', '#homecare', '#belezaemcasa', '#atendimentovip', `#homecare${citySlug}`]
+      : ['#unhasperfeitas', '#naildesigner', '#fibra', '#esmaltegel', `#unhas${citySlug}`];
 
     res.json({
       copy: copy.trim(),
@@ -1764,7 +1827,7 @@ export async function startServer() {
     });
   }
 
-  return app.listen(PORT, process.env.HOST || '127.0.0.1', () => {
+  return app.listen(PORT, process.env.HOST || '0.0.0.0', () => {
     console.log(`[D'OR@NGE BUSINESS AI R5.2] Servidor Full-Stack rodando com persistência na porta ${PORT}`);
   });
 }

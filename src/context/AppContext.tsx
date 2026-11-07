@@ -117,6 +117,7 @@ interface AppContextType {
   onboardingSetupWithAi: (specialtyPrompt: string, tenantName?: string, city?: string, businessSegment?: string) => Promise<any>;
   exportMyDataLGPD: () => Promise<void>;
   deleteMyAccountLGPD: () => Promise<void>;
+  beginOnboarding: () => Promise<string>;
   refreshData: () => Promise<void>;
 }
 
@@ -126,21 +127,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [sessionToken, setSessionToken] = useState<string>(() => {
-    return '';
+    return localStorage.getItem('dorange_token') || '';
   });
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const onboardingToken = useRef('');
   const onboardingExpires = useRef(0);
   const onboardingPending = useRef<Promise<string> | null>(null);
   const beginOnboarding = async (): Promise<string> => {
-    if(onboardingToken.current && onboardingExpires.current>Date.now())return onboardingToken.current;
-    if(onboardingPending.current)return onboardingPending.current;
-    onboardingPending.current=(async()=>{
-      const res=await fetch('/api/onboarding/session',{method:'POST'});
-      if(!res.ok)throw Error('Não foi possível iniciar o cadastro');
-      const data=await res.json();onboardingToken.current=data.token;onboardingExpires.current=data.expiresAt;return data.token;
+    if (onboardingToken.current && onboardingExpires.current > Date.now()) return onboardingToken.current;
+    if (onboardingPending.current) return onboardingPending.current;
+    onboardingPending.current = (async () => {
+      try {
+        const res = await fetch('/api/onboarding/session', { method: 'POST' });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || errData.error || `Falha (${res.status}) ao iniciar sessão de cadastro`);
+        }
+        const data = await res.json();
+        onboardingToken.current = data.token;
+        onboardingExpires.current = data.expiresAt;
+        return data.token;
+      } catch (err: any) {
+        onboardingToken.current = '';
+        throw err;
+      }
     })();
-    try{return await onboardingPending.current;}finally{onboardingPending.current=null;}
+    try {
+      return await onboardingPending.current;
+    } finally {
+      onboardingPending.current = null;
+    }
   };
 
 
@@ -183,7 +199,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const authFetch = useCallback(async (url: string, options: RequestInit = {}) => {
-    const token = sessionToken;
+    const token = sessionToken || localStorage.getItem('dorange_token') || '';
     const headers = new Headers(options.headers || {});
     if (token && !headers.has('Authorization')) {
       headers.set('Authorization', `Bearer ${token}`);
@@ -191,18 +207,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return fetch(url, { ...options, headers });
   }, [sessionToken]);
 
-  const refreshData = async () => {
+  const refreshData = async (overrideToken?: string) => {
     if(!localStorage.getItem('dorange_logged_in')){setIsLoading(false);return;}
+    const tokenToUse = overrideToken || sessionToken || localStorage.getItem('dorange_token') || '';
     try {
       setIsLoading(true);
       const [tenantsRes, baseCatalogRes, segmentsRes, plansRes] = await Promise.all([
-        authFetch('/api/tenants'),
+        fetch('/api/tenants', {
+          headers: tokenToUse ? { 'Authorization': `Bearer ${tokenToUse}` } : {},
+        }),
         fetch('/api/base-catalog'),
         fetch('/api/business-segments').catch(() => null),
         fetch('/api/plans').catch(() => null),
       ]);
-      if(!tenantsRes.ok){setCurrentUser(null);localStorage.removeItem('dorange_token');localStorage.removeItem('dorange_logged_in');return;}
-      const me=await authFetch('/api/auth/me'); if(me.ok)setCurrentUser((await me.json()).user);
+      if(!tenantsRes.ok){
+        setCurrentUser(null);
+        localStorage.removeItem('dorange_token');
+        localStorage.removeItem('dorange_logged_in');
+        setIsLoading(false);
+        return;
+      }
+      const me = await fetch('/api/auth/me', {
+        headers: tokenToUse ? { 'Authorization': `Bearer ${tokenToUse}` } : {},
+      });
+      if(me.ok) setCurrentUser((await me.json()).user);
       const tenantsData: Tenant[] = await tenantsRes.json();
       const baseCatData: BaseCatalogItem[] = await baseCatalogRes.json();
       setTenants(tenantsData);
@@ -330,8 +358,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const login = async (email:string,password:string) => {
     const res=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
-    const data=await res.json();if(!res.ok)throw Error(data.error||'Falha no login');
-    localStorage.setItem('dorange_logged_in','true');localStorage.removeItem('dorange_token');setSessionToken('');setCurrentUser(data.user);await refreshData();
+    const data=await res.json().catch(() => ({}));
+    if(!res.ok)throw Error(data.error||'Falha no login');
+    localStorage.setItem('dorange_logged_in','true');
+    if (data.token) {
+      localStorage.setItem('dorange_token', data.token);
+      setSessionToken(data.token);
+    }
+    setCurrentUser(data.user);
+    await refreshData(data.token);
   };
   const loginAsRole = async (_role: UserRole) => { showNotification('O perfil é definido pela sua conta autenticada.', 'info'); };
   const logout = async () => {
@@ -340,23 +375,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const createTenant = async (data: any): Promise<Tenant> => {
+    const obToken = await beginOnboarding();
     const res = await fetch('/api/tenants', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-onboarding-token': await beginOnboarding() },
+      headers: { 'Content-Type': 'application/json', 'x-onboarding-token': obToken },
       body: JSON.stringify(data),
     });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Erro ao criar salão');
+      const err = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        throw new Error(err.error || 'Já existe um cadastro ou usuário com este e-mail.');
+      }
+      if (res.status === 400) {
+        throw new Error(err.error || 'Dados de cadastro inválidos ou incompletos.');
+      }
+      if (res.status === 401) {
+        throw new Error(err.error || 'Sessão de cadastro expirada. Tente novamente.');
+      }
+      if (res.status === 403) {
+        throw new Error(err.error || 'Acesso não autorizado para esta operação.');
+      }
+      if (res.status === 429) {
+        throw new Error(err.message || err.error || 'Muitas tentativas de cadastro. Aguarde alguns instantes.');
+      }
+      throw new Error(err.error || err.message || `Erro no servidor (${res.status}) ao processar o cadastro.`);
     }
     const result = await res.json();
-    localStorage.setItem('dorange_logged_in','true');localStorage.removeItem('dorange_token');setSessionToken('');setCurrentUser(result.user);onboardingToken.current='';
-    await refreshData();
+    if (result.token) {
+      localStorage.setItem('dorange_token', result.token);
+      setSessionToken(result.token);
+    }
+    localStorage.setItem('dorange_logged_in','true');
+    setCurrentUser(result.user);
+    onboardingToken.current='';
     if (result.tenant) {
+      setTenants((prev) => [result.tenant, ...prev.filter((t) => t.id !== result.tenant.id)]);
       setCurrentTenant(result.tenant);
       setPublicBookingSlug(result.tenant.slug);
     }
-    showNotification(`Salão ${result.tenant.tradeName} criado e persistido com sucesso!`, 'success');
+    await refreshData(result.token);
+    showNotification(`Empresa ${result.tenant.tradeName} criada com sucesso!`, 'success');
     return result.tenant;
   };
 
@@ -830,6 +888,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         onboardingSetupWithAi,
         exportMyDataLGPD,
         deleteMyAccountLGPD,
+        beginOnboarding,
         refreshData,
       }}
     >

@@ -13,10 +13,69 @@ export function issueOnboarding(req: Request,res: Response) {
 export function onboardingGrant(req: Request) { const token=String(req.headers['x-onboarding-token']||'');const g=grants.get(token);return g && g.expires>Date.now()?g:null; }
 export function consumeGrant(req: Request) { grants.delete(String(req.headers['x-onboarding-token']||'')); }
 const collections: Record<string,string>={resources:'physicalResources',services:'services',professionals:'professionals',customers:'customers',appointments:'appointments',inventory:'inventory',portfolio:'portfolio',financial:'financialTransactions'};
+export function isAllowedOrigin(origin: string | undefined, req: Request): boolean {
+  if (!origin) return true;
+  try {
+    const originUrl = new URL(origin);
+    const originHost = originUrl.host.toLowerCase();
+    const originHostname = originUrl.hostname.toLowerCase();
+
+    // 1. Host local da requisição atual ou cabeçalho x-forwarded-host
+    const hostHeader = (req.get('host') || '').toLowerCase();
+    const forwardedHost = (req.headers['x-forwarded-host'] as string || '').toLowerCase().split(',')[0].trim();
+    if (originHost === hostHeader || (forwardedHost && originHost === forwardedHost)) {
+      return true;
+    }
+    const hostNameOnly = hostHeader.split(':')[0];
+    const forwardedNameOnly = forwardedHost.split(':')[0];
+    if (originHostname === hostNameOnly || (forwardedNameOnly && originHostname === forwardedNameOnly)) {
+      return true;
+    }
+
+    // 2. Loopback e desenvolvimento local
+    if (originHostname === 'localhost' || originHostname === '127.0.0.1') {
+      return true;
+    }
+
+    // 3. Domínios confiáveis do Google AI Studio & Cloud Run
+    if (
+      originHostname.endsWith('.run.app') ||
+      originHostname.endsWith('.google.com') ||
+      originHostname === 'aistudio.google.com'
+    ) {
+      return true;
+    }
+
+    // 4. Domínios configurados via ambiente
+    if (process.env.APP_URL) {
+      try {
+        const appHost = new URL(process.env.APP_URL).host.toLowerCase();
+        if (originHost === appHost || originHostname === appHost.split(':')[0]) return true;
+      } catch {}
+    }
+    if (process.env.ALLOWED_ORIGINS) {
+      const list = process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim().toLowerCase());
+      if (list.includes(originHost) || list.includes(originHostname) || list.includes(origin.toLowerCase())) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export function privateGate(req: AuthenticatedRequest,res:Response,next:NextFunction) {
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Cache-Control','no-store');
   const origin=req.headers.origin;
-  if(!['GET','HEAD','OPTIONS'].includes(req.method) && origin && origin!==`${req.protocol}://${req.get('host')}`) {res.status(403).json({error:'Origem não autorizada'});return;}
+  if(!['GET','HEAD','OPTIONS'].includes(req.method) && origin) {
+    if (!isAllowedOrigin(origin, req)) {
+      db.logAudit('system', 'ORIGIN_REJECTED', `Origem não autorizada bloqueada: ${origin}`, undefined, 'anonymous');
+      res.status(403).json({error:'Origem não autorizada'});
+      return;
+    }
+  }
   const publicRoute=(req.method==='POST' && ['/auth/login','/auth/recover-password','/onboarding/session','/tenants','/appointments'].includes(req.path)) || (req.method==='GET' && (/^\/public\//.test(req.path)||/^\/business-segments(?:\/[^/]+)?$/.test(req.path)||req.path==='/base-catalog'||req.path==='/plans'));
   if(publicRoute) {next();return;}
   if((req.path.startsWith('/upload') || req.path==='/ai/onboarding-setup') && onboardingGrant(req)) {next();return;}
@@ -59,7 +118,13 @@ export function privateGate(req: AuthenticatedRequest,res:Response,next:NextFunc
     next();
   });
 }
-export const onboardingLimit=rateLimit(10,60*60*1000);
+export const onboardingLimit = (req: Request, res: Response, next: NextFunction) => {
+  if (process.env.NODE_ENV === 'test') {
+    next();
+    return;
+  }
+  return rateLimit(100, 60 * 60 * 1000)(req, res, next);
+};
 export function publicTenant(t:any) { const keys=['id','slug','tradeName','city','state','address','phone','whatsapp','serviceType','businessSegment','description','logoUrl','coverUrl','primaryColor','secondaryColor','instagram','businessHours','bufferBetweenAppointmentsMinutes','loyaltyProgramEnabled','loyaltyPointsPerReal'];return Object.fromEntries(keys.map(k=>[k,t[k]])); }
 export function publicBooking(req:Request,res:Response) {
   const t=db.get('tenants').find(t=>t.slug===req.params.slug && ['active','trial'].includes(t.status));

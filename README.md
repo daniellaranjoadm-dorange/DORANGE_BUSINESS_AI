@@ -1,13 +1,18 @@
 # Cópia para desenvolvimento e importação no AI Studio
 
-Sem dados reais ou backups. Veja IMPORTAR-AI-STUDIO.md. Para iniciar: npm ci, npm run setup:local, npm run dev. Para testar: npm test (fixtures sintéticas isoladas). O relatório R5.2 descreve a entrega local anterior; os logs e dados confidenciais daquela entrega não integram este repositório.
+Sem dados reais ou backups no repositório. Veja IMPORTAR-AI-STUDIO.md. Para iniciar: npm ci, npm run setup:local, npm run dev. Para testar: npm test (fixtures sintéticas isoladas). Consulte CHANGELOG-R5.3.md e RELATORIO-R5.3.md para detalhes da versão R5.3.
 
-# D'OR@NGE BUSINESS AI — R5.2
-## Entrega R5.2
+# D'OR@NGE BUSINESS AI — R5.3
+## Entrega R5.3 (v5.3.0)
 
-Evolução incremental da R5.1. Consulte CHANGELOG-R5.2.md, RELATORIO-R5.2.md e OPERACAO-R5.2.md antes de implantação. Testes finais: 25/25 e R4 8/8; typecheck e build passam. Logs e conferência SHA-256 dos dados estão em evidencias/. Inspeção visual parcial em navegador a 390 × 844; não houve teste em celular real ou integração externa. A release ainda não está homologada para lançamento comercial amplo.
+Evolução de estabilização, experiência comercial e multissegmento sobre a R5.2. Consulte CHANGELOG-R5.3.md, RELATORIO-R5.3.md e OPERACAO-R5.2.md antes de implantação. Testes finais: 29/29 aprovados (incluindo suíte multissegmento e R4 8/8); typecheck e build passam 100%.
 
-O código PIX fictício foi removido. Portfólio exige foto; categorias preservam valores existentes. Melhorias mobile incluem zoom, safe area e correção da rolagem horizontal do cadastro. Dados deste ZIP são históricos e confidenciais: não sobrepor dados de instalação existente. Use DATA_DIR para o volume da instalação.
+Principais destaques da R5.3:
+- Proteção automática do banco de dados com autorrecuperação a partir de `database.backup.json` e bloqueio estrito de criação inadvertida de banco vazio (`ALLOW_EMPTY_DB=false`).
+- Concorrência de recursos físicos (macas, salas, cadeiras, lavatórios e equipamentos) validada na criação e no reagendamento de atendimentos.
+- Experiência comercial e vocabulário especializado para os 7 segmentos (`NAILS`, `BARBER`, `BEAUTY`, `BROWS_LASHES`, `ESTHETICS`, `MASSAGE`, `HOME_SERVICES`), sem contaminação de termos de unhas em barbearias ou massoterapia.
+- Dashboard Executivo e livro caixa com métricas 100% reais (zero fallbacks artificiais) e emissão de comprovante imprimível com menção explícita de registro manual.
+- Dados das pastas `data/` e `uploads/` são históricos e protegidos por `.gitignore`: nunca versionar dados reais de clientes no GitHub. Use `DATA_DIR` para o volume de produção.
 
 As seções abaixo documentam a base preservada da R5.1; os resultados atuais e suas limitações estão no relatório R5.2.
 

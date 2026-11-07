@@ -55,7 +55,7 @@ export const SalonHeader: React.FC<SalonHeaderProps> = ({
     inventory: 'Estoque de Materiais & Insumos',
     marketing: 'Central de Marketing AI',
     packages: 'Pacotes & Assinaturas',
-    portfolio: 'Portfólio & Galeria de Unhas',
+    portfolio: 'Portfólio & Galeria de Trabalhos',
     whatsapp: 'Central de WhatsApp',
     'ai-assistant': 'Assistente Inteligente D’OR@NGE',
     settings: 'Personalização da Marca & Horários',

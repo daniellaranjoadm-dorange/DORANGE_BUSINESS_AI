@@ -80,6 +80,8 @@ export interface Tenant {
   displacementFeeBRL?: number;
   coverageRegions?: string[];
   address?: string;
+  cep?: string;
+  neighborhood?: string;
   logoUrl?: string;
   coverUrl?: string;
   primaryColor: string;
@@ -233,6 +235,8 @@ export interface Appointment {
   createdAt: string;
   paymentStatus?: 'pending' | 'paid' | 'deposit_paid';
   depositAmount?: number;
+  resourceId?: string;
+  resourceName?: string;
 }
 
 export interface FinancialTransaction {

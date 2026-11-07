@@ -431,6 +431,23 @@ class DatabaseManager {
           aiUsage: parsed.aiUsage || [],
         };
       }
+      // Proteção de Recuperação R5.3: Se o banco principal sumir mas existir backup operacional válido
+      if (fs.existsSync(BACKUP_PATH)) {
+        const rawBackup = fs.readFileSync(BACKUP_PATH, 'utf-8');
+        const parsedBackup = JSON.parse(rawBackup);
+        for(const key of ['tenants','users','professionals','services','customers','appointments','financialTransactions','inventory'])if(!Array.isArray(parsedBackup[key]))throw Error('Backup inválido: '+key);
+        console.warn('[DB R5.3] database.json ausente, mas backup válido localizado. Restaurando com segurança a partir de database.backup.json.');
+        this.saveDirect(parsedBackup);
+        return {
+          marketingPosts: [], connectedAccounts: [], portfolio: [], packagePlans: [], customerPackages: [], auditLogs: [], subscriptionPlans: [], physicalResources: [],
+          ...parsedBackup,
+          baseCatalog: parsedBackup.baseCatalog || EXPANDED_BASE_CATALOG,
+          blockedTimes: parsedBackup.blockedTimes || [],
+          waitingList: parsedBackup.waitingList || [],
+          inventoryMovements: parsedBackup.inventoryMovements || [],
+          aiUsage: parsedBackup.aiUsage || [],
+        };
+      }
     } catch (e) {
       throw new Error('Banco inválido: inicialização interrompida para preservar dados. Restaure um backup validado.', { cause: e });
     }

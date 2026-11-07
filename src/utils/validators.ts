@@ -103,3 +103,14 @@ export function formatDateBR(dateStr: string): string {
   const [year, month, day] = dateStr.split('-');
   return `${day}/${month}/${year}`;
 }
+
+export function formatCEP(val: string): string {
+  const clean = val.replace(/\D/g, '').slice(0, 8);
+  if (clean.length <= 5) return clean;
+  return `${clean.slice(0, 5)}-${clean.slice(5)}`;
+}
+
+export function validateCEP(val: string): boolean {
+  const clean = val.replace(/\D/g, '');
+  return clean.length === 8 && !/^(\d)\1{7}$/.test(clean);
+}

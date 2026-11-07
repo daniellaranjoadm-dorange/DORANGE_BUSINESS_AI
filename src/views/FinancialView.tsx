@@ -12,7 +12,8 @@ import {
   Clock, 
   Users, 
   CreditCard,
-  Printer
+  Printer,
+  Receipt
 } from 'lucide-react';
 import { formatCurrencyBRL, formatDateBR } from '../utils/validators';
 
@@ -22,6 +23,7 @@ export const FinancialView: React.FC = () => {
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense' | 'commission'>('all');
   const [isNewTxModalOpen, setIsNewTxModalOpen] = useState<boolean>(false);
   const [isPixModalOpen, setIsPixModalOpen] = useState<boolean>(false);
+  const [selectedReceiptTx, setSelectedReceiptTx] = useState<any>(null);
 
   // Form de nova despesa/receita manual
   const [txType, setTxType] = useState<'income' | 'expense'>('expense');
@@ -160,7 +162,7 @@ export const FinancialView: React.FC = () => {
           <div className="font-display font-bold text-2xl text-rose-600 tabular-nums">
             {formatCurrencyBRL(totalExpenses)}
           </div>
-          <p className="text-[11px] text-stone-700 mt-1">Géis, lixas e materiais</p>
+          <p className="text-[11px] text-stone-700 mt-1">Insumos, materiais e custos operacionais</p>
         </div>
 
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-xs">
@@ -189,9 +191,14 @@ export const FinancialView: React.FC = () => {
       {/* Tabela de Transações */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
         <div className="px-5 py-3.5 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-stone-50/50">
-          <h3 className="font-display font-bold text-stone-900 text-sm">
-            Livro Caixa & Movimentações
-          </h3>
+          <div>
+            <h3 className="font-display font-bold text-stone-900 text-sm">
+              Livro Caixa & Movimentações
+            </h3>
+            <p className="text-[11px] text-stone-600">
+              Registros manuais de balcão. Sem integração bancária automatizada.
+            </p>
+          </div>
 
           <div className="flex items-center gap-1">
             {[
@@ -226,6 +233,7 @@ export const FinancialView: React.FC = () => {
                 <th className="py-3 px-4">Forma</th>
                 <th className="py-3 px-4 text-right">Valor</th>
                 <th className="py-3 px-4 text-center">Status</th>
+                <th className="py-3 px-4 text-center">Comprovante</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
@@ -265,6 +273,16 @@ export const FinancialView: React.FC = () => {
                     }`}>
                       {tx.status === 'paid' ? 'Quitado' : 'Previsto'}
                     </span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <button
+                      onClick={() => setSelectedReceiptTx(tx)}
+                      title="Gerar Comprovante / Recibo de Caixa"
+                      className="p-1.5 rounded-lg border border-stone-200 hover:border-stone-400 bg-white hover:bg-stone-50 text-stone-700 transition shadow-2xs inline-flex items-center gap-1"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-semibold">Recibo</span>
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -394,6 +412,96 @@ export const FinancialView: React.FC = () => {
             >
               Fechar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Comprovante de Atendimento / Caixa */}
+      {selectedReceiptTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm print:p-0 print:bg-white">
+          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-md p-6 space-y-4 print:shadow-none print:border-none print:p-0">
+            {/* Cabeçalho do Recibo */}
+            <div className="text-center pb-3 border-b border-stone-200">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-stone-700 block">
+                Comprovante de Operação
+              </span>
+              <h3 className="font-display font-bold text-stone-900 text-lg mt-0.5">
+                {currentTenant?.tradeName}
+              </h3>
+              <p className="text-xs text-stone-700">
+                {currentTenant?.city} · {currentTenant?.state}
+                {currentTenant?.phone ? ` · WhatsApp: ${currentTenant.phone}` : ''}
+              </p>
+            </div>
+
+            {/* Aviso Explicito Obrigatório: Registro Manual */}
+            <div className="p-2.5 bg-amber-50/90 border border-amber-200 rounded-xl text-center">
+              <span className="text-xs font-bold text-amber-900 block">
+                Registro Manual no Caixa
+              </span>
+              <span className="text-[10px] text-amber-800">
+                (Sem integração bancária automática · Conciliado localmente)
+              </span>
+            </div>
+
+            {/* Detalhes da Transação */}
+            <div className="space-y-2 text-xs divide-y divide-stone-100">
+              <div className="flex justify-between py-1.5">
+                <span className="text-stone-700">Código do Lançamento:</span>
+                <span className="font-mono text-stone-900 text-[11px]">{selectedReceiptTx.id}</span>
+              </div>
+              <div className="flex justify-between py-1.5">
+                <span className="text-stone-700">Data & Hora:</span>
+                <span className="font-medium text-stone-900">{formatDateBR(selectedReceiptTx.date)}</span>
+              </div>
+              <div className="flex justify-between py-1.5">
+                <span className="text-stone-700">Natureza:</span>
+                <span className="font-semibold text-stone-900">
+                  {selectedReceiptTx.type === 'income' ? 'Receita / Pagamento de Cliente' : selectedReceiptTx.type === 'expense' ? 'Despesa / Insumo' : 'Comissão'}
+                </span>
+              </div>
+              <div className="flex justify-between py-1.5">
+                <span className="text-stone-700">Descrição / Serviço:</span>
+                <span className="font-medium text-stone-900 text-right max-w-[60%]">{selectedReceiptTx.description}</span>
+              </div>
+              <div className="flex justify-between py-1.5">
+                <span className="text-stone-700">Forma de Pagamento:</span>
+                <span className="font-semibold uppercase text-stone-900">{selectedReceiptTx.paymentMethod || 'Dinheiro / Balcão'}</span>
+              </div>
+              <div className="flex justify-between py-2 items-center bg-stone-50 px-2 rounded-lg mt-2">
+                <span className="text-xs font-bold text-stone-900">Valor Total Registrado:</span>
+                <span className="font-display font-bold text-base text-stone-900 tabular-nums">
+                  {formatCurrencyBRL(selectedReceiptTx.amount)}
+                </span>
+              </div>
+            </div>
+
+            {/* Linha de Assinatura / Conferência */}
+            <div className="pt-6 text-center border-t border-dashed border-stone-200">
+              <div className="w-48 mx-auto border-t border-stone-400 mb-1"></div>
+              <span className="text-[10px] text-stone-700 uppercase tracking-wider block">
+                Assinatura / Conferência do Caixa
+              </span>
+            </div>
+
+            {/* Ações (ocultadas na impressão) */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200 print:hidden">
+              <button
+                type="button"
+                onClick={() => setSelectedReceiptTx(null)}
+                className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900"
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-stone-900 hover:bg-stone-800 rounded-xl transition-all shadow-xs"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Imprimir Recibo
+              </button>
+            </div>
           </div>
         </div>
       )}
