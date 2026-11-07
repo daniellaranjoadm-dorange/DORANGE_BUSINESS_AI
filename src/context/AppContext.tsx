@@ -568,6 +568,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!res.ok) throw new Error('Erro ao atualizar serviço');
     const updated = await res.json();
     setServices((prev) => prev.map((s) => (s.id === id ? updated : s)));
+    await refreshData();
     showNotification(`Serviço "${updated.name}" atualizado!`, 'success');
     return updated;
   };

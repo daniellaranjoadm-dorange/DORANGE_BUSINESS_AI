@@ -17,9 +17,10 @@ import { formatCurrencyBRL } from '../utils/validators';
 import { CatalogueImportModal } from '../components/CatalogueImportModal';
 import { MarketBenchmarkModal } from '../components/MarketBenchmarkModal';
 import { Service } from '../types';
+import {ServiceTeamPicker} from '../components/ServiceTeamPicker';
 
 export const CatalogView: React.FC = () => {
-  const { currentTenant, currentSegment, services, createService, updateService, deleteService, showNotification } = useApp();
+  const { currentTenant, currentSegment, services, professionals, createService, updateService, deleteService, showNotification } = useApp();
 
   const segmentCategories = Array.from(new Set([
     ...(currentSegment ? currentSegment.suggestedServices.map((s) => s.category) : []),
@@ -38,8 +39,9 @@ export const CatalogView: React.FC = () => {
   // Formulário de novo serviço
   const [newServiceName, setNewServiceName] = useState('');
   const [newCategory, setNewCategory] = useState(segmentCategories[0] || 'Geral');
-  const [newPrice, setNewPrice] = useState('50');
-  const [newDuration, setNewDuration] = useState('45');
+  const [newPrice, setNewPrice] = useState('');
+  const [newDuration, setNewDuration] = useState('');
+  const [newProfessionals,setNewProfessionals]=useState<string[]>([]);
   const [newImageUrl,setNewImageUrl] = useState('');
   const [newDescription, setNewDescription] = useState('');
 
@@ -65,6 +67,7 @@ export const CatalogView: React.FC = () => {
         description: newDescription,
         materialsNeeded: [],
         imageUrl:newImageUrl,
+        professionalIds:newProfessionals,
       });
       setIsNewServiceModalOpen(false);
       setNewServiceName('');
@@ -103,7 +106,7 @@ export const CatalogView: React.FC = () => {
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-800 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-xs"
           >
             <TrendingUp className="w-4 h-4 text-amber-600" />
-            Tendências RS
+            Simular preço
           </button>
 
           <button
@@ -111,7 +114,7 @@ export const CatalogView: React.FC = () => {
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-xl transition-all shadow-xs"
           >
             <Sparkles className="w-4 h-4 text-amber-600" />
-            Importar com IA
+            Importar catálogo
           </button>
 
           <button
@@ -196,7 +199,7 @@ export const CatalogView: React.FC = () => {
                 </div>
 
                 <p className="text-xs text-stone-700 line-clamp-2">
-                  {service.description || 'Procedimento profissional de nail design.'}
+                  {service.description || 'Configure o escopo deste serviço para seus clientes.'}
                 </p>
 
                 <div className="flex items-center gap-3 text-xs text-stone-700 pt-1">
@@ -213,6 +216,7 @@ export const CatalogView: React.FC = () => {
             </div>
 
             {/* Ações do Card */}
+            <p className="px-4 pb-3 text-xs text-stone-500">{professionals.some(p=>p.active&&p.services.includes(service.id))?'Equipe vinculada para agendamento':'Vincule um profissional para disponibilizar no portal'}</p>
             <div className="px-4 py-3 bg-stone-50 border-t border-stone-100 flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -228,9 +232,9 @@ export const CatalogView: React.FC = () => {
 
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setEditingService(service)}
+                  onClick={() => setEditingService({...service,professionalIds:professionals.filter(p=>p.active&&p.services.includes(service.id)).map(p=>p.id)})}
                   className="p-1.5 text-stone-500 hover:text-stone-800 rounded-lg hover:bg-stone-200/60 transition-colors"
-                  title="Editar Preço e Duração"
+                  title="Configurar serviço e equipe"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
@@ -301,12 +305,7 @@ export const CatalogView: React.FC = () => {
                   onChange={(e) => setNewCategory(e.target.value)}
                   className="w-full text-xs px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl outline-none"
                 >
-                  <option value="Manicure">Manicure</option>
-                  <option value="Pedicure">Pedicure</option>
-                  <option value="Alongamento">Alongamento</option>
-                  <option value="Gel & Blindagem">Gel & Blindagem</option>
-                  <option value="Nail Art">Nail Art</option>
-                  <option value="Combos">Combos</option>
+                  {segmentCategories.map(category=><option key={category} value={category}>{category}</option>)}
                 </select>
               </div>
 
@@ -321,6 +320,7 @@ export const CatalogView: React.FC = () => {
                 />
               </div>
 
+              <ServiceTeamPicker value={newProfessionals} onChange={setNewProfessionals}/>
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
                 <button
                   type="button"
@@ -383,6 +383,8 @@ export const CatalogView: React.FC = () => {
                 />
               </div>
 
+              <label className="block text-xs font-semibold">Custo de materiais por serviço (R$)<input aria-label="Custo de materiais do serviço" type="number" min="0" step="0.01" value={editingService.costBRL??0} onChange={e=>setEditingService({...editingService,costBRL:Number(e.target.value)})} className="block mt-1 w-full border rounded-xl p-3"/></label>
+              <ServiceTeamPicker value={editingService.professionalIds||[]} onChange={ids=>setEditingService({...editingService,professionalIds:ids})}/>
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
                 <button
                   type="button"
@@ -398,6 +400,8 @@ export const CatalogView: React.FC = () => {
                       price: editingService.price,
                       durationMinutes: editingService.durationMinutes,
                       description: editingService.description,
+                      professionalIds:editingService.professionalIds,
+                      costBRL:editingService.costBRL,
                     });
                     setEditingService(null);
                   }}

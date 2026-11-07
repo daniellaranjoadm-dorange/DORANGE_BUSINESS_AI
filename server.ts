@@ -1,3 +1,5 @@
+import {withinWorkingHours,validScheduleDate} from './src/utils/scheduling.js';
+import {checkoutSnapshot,recordPayment,completeAttendance,settlePayable,WorkflowError} from './server/attendance.js';
 import {businessInsights,localDateKey} from './src/utils/businessInsights.js';
 import {localAssistantReply} from './src/utils/localAssistant.js';
 import crypto from 'node:crypto';
@@ -379,27 +381,22 @@ app.post('/api/services', (req: Request, res: Response) => {
     professionalIds: professionalIds || [],
   };
 
-  db.mutate((d) => d.services.push(newService));
+  if(!Array.isArray(newService.professionalIds)||newService.professionalIds.some(id=>!db.get('professionals').some(p=>p.id===id&&p.tenantId===tenantId&&p.active))){res.status(400).json({error:'Selecione profissionais ativos desta empresa.'});return;}
+  db.mutate((d) => {d.services.push(newService);for(const p of d.professionals)if(newService.professionalIds.includes(p.id))p.services=Array.from(new Set([...p.services,newService.id]));});
   db.logAudit(tenantId, 'CREATE_SERVICE', `Serviço criado: ${newService.name}`);
 
   res.status(201).json(newService);
 });
 
-app.put('/api/services/:id', (req: Request, res: Response) => {
-  let updated: Service | null = null;
-  db.mutate((d) => {
-    const idx = d.services.findIndex((s) => s.id === req.params.id);
-    if (idx !== -1) {
-      d.services[idx] = { ...d.services[idx], ...req.body };
-      updated = d.services[idx];
-    }
-  });
-
-  if (!updated) {
-    res.status(404).json({ error: 'Serviço não encontrado.' });
-    return;
-  }
-  res.json(updated);
+app.put('/api/services/:id',(req:Request,res:Response)=>{
+ const current=db.get('services').find(s=>s.id===req.params.id);if(!current){res.status(404).json({error:'Serviço não encontrado.'});return;}
+ const allowed=['name','category','description','durationMinutes','price','costBRL','imageUrl','materialsNeeded','professionalIds','active'];
+ const patch=Object.fromEntries(Object.entries(req.body).filter(([key])=>allowed.includes(key)));
+ const next={...current,...patch};
+ if(!isImportItemValid(next)||typeof next.active!=='boolean'||(next.costBRL!==undefined&&(!Number.isFinite(next.costBRL)||next.costBRL<0))||!Array.isArray(next.professionalIds)||next.professionalIds.some(id=>!db.get('professionals').some(p=>p.id===id&&p.tenantId===current.tenantId&&p.active))){res.status(400).json({error:'Revise preço, duração, custo e profissionais ativos.'});return;}
+ db.mutate(d=>{const idx=d.services.findIndex(s=>s.id===current.id);d.services[idx]=next;
+  if(patch.professionalIds!==undefined)for(const p of d.professionals.filter(p=>p.tenantId===current.tenantId)){p.services=p.services.filter(id=>id!==current.id);if(next.professionalIds.includes(p.id))p.services.push(current.id);}
+ });res.json(next);
 });
 
 app.delete('/api/services/:id', (req: Request, res: Response) => {
@@ -560,6 +557,7 @@ app.post('/api/appointments', rateLimit(30, 60000), async (req: Request, res: Re
   const day=tenant.businessHours[new Date(date+'T12:00:00').getDay()];
   const begin=timeToMinutes(time), finish=begin+service.durationMinutes;
   if(!day?.open||begin<timeToMinutes(day.start)||finish>timeToMinutes(day.end)||(day.breakStart&&day.breakEnd&&begin<timeToMinutes(day.breakEnd)&&finish>timeToMinutes(day.breakStart))){res.status(409).json({error:'Horário fora do expediente ou em pausa'});return;}
+  if(!withinWorkingHours(tenant,prof,date,time,service.durationMinutes)){res.status(409).json({error:'Fora da jornada ou na pausa do profissional.'});return;}
   const buffer = tenant.bufferBetweenAppointmentsMinutes ?? 10;
 
   // Lock de Concorrência por Profissional e Data
@@ -577,7 +575,7 @@ app.post('/api/appointments', rateLimit(30, 60000), async (req: Request, res: Re
       if (existing.tenantId !== tenantId) return false;
       if (existing.professionalId !== professionalId) return false;
       if (existing.date !== date) return false;
-      if (existing.status === 'cancelled') return false;
+      if (['cancelled','no_show'].includes(existing.status)) return false;
 
       const existingStart = timeToMinutes(existing.time);
       const existingEnd = existingStart + existing.durationMinutes + buffer;
@@ -624,7 +622,7 @@ app.post('/api/appointments', rateLimit(30, 60000), async (req: Request, res: Re
       }
       const resourceOverlaps = db.get('appointments').filter((existing) => {
         if (existing.tenantId !== tenantId || existing.resourceId !== resourceId) return false;
-        if (existing.date !== date || existing.status === 'cancelled') return false;
+        if (existing.date !== date || ['cancelled','no_show'].includes(existing.status)) return false;
         const existingStart = timeToMinutes(existing.time);
         const existingEnd = existingStart + existing.durationMinutes + buffer;
         return newStart < existingEnd && newEnd > existingStart;
@@ -647,19 +645,16 @@ app.post('/api/appointments', rateLimit(30, 60000), async (req: Request, res: Re
           tenantId,
           name: customerName,
           phone: customerPhone,
-          totalSpent: service.price,
-          appointmentsCount: 1,
-          loyaltyPoints: Math.floor(service.price * (tenant?.loyaltyPointsPerReal || 1)),
-          marketingConsent: true,
-          lastVisit: date,
+          totalSpent: 0,
+          appointmentsCount: 0,
+          loyaltyPoints: 0,
+          marketingConsent: req.body.marketingConsent===true,
+
           createdAt: new Date().toISOString(),
         };
         d.customers.push(customer);
       } else {
-        customer.appointmentsCount += 1;
-        customer.totalSpent += service.price;
-        customer.loyaltyPoints += Math.floor(service.price * (tenant?.loyaltyPointsPerReal || 1));
-        customer.lastVisit = date;
+        // Booking is not a completed visit or a payment. Historical counters stay intact.
       }
       customerId = customer.id;
 
@@ -684,6 +679,7 @@ app.post('/api/appointments', rateLimit(30, 60000), async (req: Request, res: Re
       inspirationPhotoUrl: inspirationPhotoUrl || '',
       createdAt: new Date().toISOString(),
       paymentStatus: 'pending',
+      workflowVersion: 1,
       resourceId: allocatedResource ? allocatedResource.id : undefined,
       resourceName: allocatedResource ? allocatedResource.name : undefined,
     };
@@ -695,6 +691,7 @@ app.post('/api/appointments', rateLimit(30, 60000), async (req: Request, res: Re
         id: `fin-${crypto.randomUUID()}`,
         tenantId,
         type: 'income',
+        kind: 'forecast',
         category: 'Atendimento',
         description: `${service.name} - ${customerName}`,
         amount: service.price,
@@ -724,6 +721,8 @@ app.patch('/api/appointments/:id/reschedule', async (req: Request, res: Response
   }
 
   const appt = db.get('appointments').find((a) => a.id === appointmentId);
+  if(appt){const company=db.get('tenants').find(t=>t.id===appt.tenantId);const professional=db.get('professionals').find(p=>p.id===appt.professionalId);if(!company||!professional||!professional.active||!withinWorkingHours(company,professional,date,time,appt.durationMinutes)){res.status(409).json({error:'Fora da jornada do profissional ou data inválida.'});return;}}
+  if(appt && ['completed','cancelled','no_show'].includes(appt.status)){res.status(409).json({error:'Somente atendimentos em aberto podem ser reagendados.'});return;}
   if (!appt) {
     res.status(404).json({ error: 'Agendamento não encontrado.' });
     return;
@@ -748,7 +747,7 @@ app.patch('/api/appointments/:id/reschedule', async (req: Request, res: Response
       if (existing.tenantId !== appt.tenantId) return false;
       if (existing.professionalId !== appt.professionalId) return false;
       if (existing.date !== date) return false;
-      if (existing.status === 'cancelled') return false;
+      if (['cancelled','no_show'].includes(existing.status)) return false;
 
       const existingStart = timeToMinutes(existing.time);
       const existingEnd = existingStart + existing.durationMinutes + buffer;
@@ -784,7 +783,7 @@ app.patch('/api/appointments/:id/reschedule', async (req: Request, res: Response
       if (resObj) {
         const resOverlaps = db.get('appointments').filter((existing) => {
           if (existing.id === appointmentId || existing.tenantId !== appt.tenantId || existing.resourceId !== appt.resourceId) return false;
-          if (existing.date !== date || existing.status === 'cancelled') return false;
+          if (existing.date !== date || ['cancelled','no_show'].includes(existing.status)) return false;
           const existingStart = timeToMinutes(existing.time);
           const existingEnd = existingStart + existing.durationMinutes + buffer;
           return newStart < existingEnd && newEnd > existingStart;
@@ -805,7 +804,7 @@ app.patch('/api/appointments/:id/reschedule', async (req: Request, res: Response
         updated = d.appointments[idx];
 
         // Atualiza data na transação financeira correspondente
-        const fin = d.financialTransactions.find((f) => f.appointmentId === appointmentId);
+        const fin = d.financialTransactions.find((f) => f.appointmentId === appointmentId && f.type==='income' && f.status==='pending');
         if (fin) {
           fin.date = date;
           fin.dueDate = date;
@@ -821,6 +820,8 @@ app.patch('/api/appointments/:id/reschedule', async (req: Request, res: Response
 // Registro de Falta (No-Show)
 app.patch('/api/appointments/:id/no-show', (req: Request, res: Response) => {
   const appointmentId = req.params.id;
+  const original=db.get('appointments').find(a=>a.id===appointmentId);
+  if(original && ['completed','cancelled'].includes(original.status)){res.status(409).json({error:'Atendimento encerrado não pode ser marcado como falta.'});return;}
   let updated: Appointment | null = null;
 
   db.mutate((d) => {
@@ -927,31 +928,23 @@ app.post('/api/appointments/waiting-list', (req: Request, res: Response) => {
   res.status(201).json(entry);
 });
 
-app.patch('/api/appointments/:id', (req: Request, res: Response) => {
-  const allowed=['status','paymentStatus','notes','tenantId'];
-  if(Object.keys(req.body).some(k=>!allowed.includes(k))){res.status(400).json({error:'Use o reagendamento para alterar data ou horário.'});return;}
-  const prior=db.get('appointments').find(a=>a.id===req.params.id);
-  if(prior&&['cancelled','no_show'].includes(prior.status)&&['pending','confirmed','completed'].includes(req.body.status)){res.status(409).json({error:'Crie um novo agendamento para reativar um horário cancelado.'});return;}
-  if(req.body.status&&!['pending','confirmed','completed','cancelled','no_show'].includes(req.body.status)){res.status(400).json({error:'Status inválido'});return;}
-  let updated: Appointment | null = null;
-  db.mutate((d) => {
-    const idx = d.appointments.findIndex((a) => a.id === req.params.id);
-    if (idx !== -1) {
-      d.appointments[idx] = { ...d.appointments[idx], ...req.body };
-      updated = d.appointments[idx];
-
-      if (req.body.status === 'completed') {
-        const fin = d.financialTransactions.find((f) => f.appointmentId === updated?.id);
-        if (fin) fin.status = 'paid';
-      }
-    }
-  });
-
-  if (!updated) {
-    res.status(404).json({ error: 'Agendamento não encontrado.' });
-    return;
-  }
-  res.json(updated);
+const attendanceRoles=requireRoles('superadmin','owner','manager');
+function attendanceReply(res:Response,operation:()=>any){try{res.json(operation());}catch(error){if(error instanceof WorkflowError)res.status(error.status).json({error:error.message});else{console.error('[Atendimento] Falha ao persistir operação');res.status(500).json({error:'Operação não concluída. Confira o atendimento antes de tentar novamente.'});}}}
+app.get('/api/appointments/:id/checkout',attendanceRoles,(req,res)=>attendanceReply(res,()=>checkoutSnapshot(db,req.params.id)));
+app.post('/api/appointments/:id/payments',attendanceRoles,(req:AuthenticatedRequest,res)=>attendanceReply(res,()=>recordPayment(db,req.params.id,req.body,req.user!.id)));
+app.post('/api/appointments/:id/complete',attendanceRoles,(req:AuthenticatedRequest,res)=>attendanceReply(res,()=>completeAttendance(db,req.params.id,req.body,req.user!.id)));
+app.post('/api/financial/:id/settle',attendanceRoles,(req:AuthenticatedRequest,res)=>attendanceReply(res,()=>settlePayable(db,req.params.id,req.body.operationKey,req.body.paymentMethod,req.user!.id)));
+app.patch('/api/appointments/:id',(req:Request,res:Response)=>{
+ const allowed=['status','notes','tenantId'];
+ if(Object.keys(req.body).some(k=>!allowed.includes(k))){res.status(400).json({error:'Use a ficha de atendimento para registrar recebimentos e a ação de reagendamento para mudar horários.'});return;}
+ const prior=db.get('appointments').find(a=>a.id===req.params.id);
+ if(!prior){res.status(404).json({error:'Atendimento não encontrado.'});return;}
+ if(req.body.status==='completed'){res.status(409).json({error:'Conclua pela ficha de atendimento, revisando materiais e comissão. Conclusão não confirma pagamento.'});return;}
+ if(req.body.status&&!['pending','confirmed','cancelled','no_show'].includes(req.body.status)){res.status(400).json({error:'Status inválido.'});return;}
+ if(req.body.status&&['completed','cancelled','no_show'].includes(prior.status)&&req.body.status!==prior.status){res.status(409).json({error:'Atendimento encerrado. Preserve o histórico e crie um novo agendamento.'});return;}
+ db.mutate(data=>{const appointment=data.appointments.find(a=>a.id===prior.id)!;if(req.body.notes!==undefined)appointment.notes=String(req.body.notes).slice(0,4000);if(req.body.status)appointment.status=req.body.status;
+  if(req.body.status==='cancelled')for(const tx of data.financialTransactions)if(tx.appointmentId===appointment.id&&tx.type==='income'&&tx.status==='pending'){tx.status='void';tx.kind='forecast';}
+ });res.json(db.get('appointments').find(a=>a.id===prior.id));
 });
 
 // ==========================================
@@ -1537,15 +1530,17 @@ app.post('/api/ai/parse-catalogue', rateLimit(10,60000), async (req: Request,res
 // All selected items commit together; no inferred prices, costs or profit margins.
 app.post('/api/catalogue/import', (req:Request,res:Response)=>{
  const {tenantId,items}=req.body;
+  const assigned=req.body.professionalIds||[];
+  if(!Array.isArray(assigned)||assigned.some(id=>!db.get('professionals').some(p=>p.id===id&&p.tenantId===tenantId&&p.active))){res.status(400).json({error:'Selecione profissionais ativos desta empresa.'});return;}
  if(!tenantId||!Array.isArray(items)||items.length<1||items.length>100||items.some(item=>!isImportItemValid(item))){res.status(400).json({error:'Revise os itens: nome, preço e duração de 5 a 720 minutos são obrigatórios.'});return;}
  const keys=items.map(item=>normalizeName(item.name));
  if(new Set(keys).size!==keys.length){res.status(409).json({error:'Há nomes repetidos na seleção. Nenhum item foi gravado.'});return;}
- const services:Service[]=items.map(item=>({id:'serv-'+crypto.randomUUID(),tenantId,itemType:'service',name:item.name.trim(),category:String(item.category||'Serviços').slice(0,100),description:String(item.description||'').slice(0,2000),durationMinutes:item.durationMinutes,price:item.price,costBRL:0,estimatedMarginPercent:0,materialsNeeded:[],professionalIds:[],active:true}));
+ const services:Service[]=items.map(item=>({id:'serv-'+crypto.randomUUID(),tenantId,itemType:'service',name:item.name.trim(),category:String(item.category||'Serviços').slice(0,100),description:String(item.description||'').slice(0,2000),durationMinutes:item.durationMinutes,price:item.price,costBRL:0,estimatedMarginPercent:0,materialsNeeded:[],professionalIds:assigned,active:true}));
  try{
   db.mutate(d=>{
    const exists=new Set(d.services.filter(s=>s.tenantId===tenantId).map(s=>normalizeName(s.name)));
    if(keys.some(key=>exists.has(key)))throw Error('duplicate-catalogue');
-   d.services.push(...services);
+   d.services.push(...services);for(const p of d.professionals)if(assigned.includes(p.id))p.services=Array.from(new Set([...p.services,...services.map(s=>s.id)]));
   });
   res.status(201).json({imported:services.length});
  }catch(error){if(error instanceof Error&&error.message==='duplicate-catalogue')res.status(409).json({error:'Um serviço já existe no catálogo. Revise a lista; nenhum item foi gravado.'});else res.status(500).json({error:'Importação não concluída. Confira o catálogo antes de tentar novamente.'});}

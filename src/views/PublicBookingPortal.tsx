@@ -1,3 +1,4 @@
+import {availableStartTimes} from '../utils/scheduling';
 import {localDateKey} from '../utils/businessInsights';
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
@@ -40,7 +41,8 @@ export const PublicBookingPortal: React.FC = () => {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [tenantServices, setTenantServices] = useState<Service[]>([]);
   const [tenantProfessionals, setTenantProfessionals] = useState<Professional[]>([]);
-  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [busyAppointments,setBusyAppointments]=useState<any[]>([]);
+  const [publicBlocks,setPublicBlocks]=useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Tab view inside public portal: 'booking' | 'gallery' | 'about'
@@ -83,8 +85,7 @@ export const PublicBookingPortal: React.FC = () => {
         const response=await fetch(`/api/public/booking/${encodeURIComponent(publicBookingSlug)}?date=${selectedDate}`);
         if(!response.ok)throw Error('Estabelecimento não encontrado');
         const data=await response.json();setTenant(data.tenant);setTenantServices(data.services);setTenantProfessionals(data.professionals);setPublicPortfolio(data.portfolio);
-        if(data.professionals.length)setSelectedProf(data.professionals[0]);
-        setBookedSlots(data.appointments.filter((a:any)=>!selectedProf||a.professionalId===selectedProf.id).map((a:any)=>a.time));
+        setBusyAppointments(data.appointments);setPublicBlocks(data.blockedTimes||[]);
       } catch (err) {
         setErrorMessage('Estabelecimento não encontrado ou indisponível.');
         console.error(err);
@@ -96,9 +97,8 @@ export const PublicBookingPortal: React.FC = () => {
   }, [publicBookingSlug, tenants, selectedDate]);
 
   // Lista de horários disponíveis
-  const availableSlots = [
-    '09:00', '09:40', '10:30', '11:15', '13:30', '14:20', '15:10', '16:00', '17:00', '18:00', '18:45'
-  ];
+  const availableSlots=tenant&&selectedProf&&selectedService?availableStartTimes(tenant,selectedProf,selectedDate,selectedService.durationMinutes,busyAppointments,publicBlocks).filter(time=>selectedDate!==localDateKey(new Date())||time>new Date().toTimeString().slice(0,5)):[];
+  useEffect(()=>setSelectedTime(''),[selectedDate,selectedProf?.id,selectedService?.id]);
 
   const handleConfirmBooking = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -385,7 +385,7 @@ export const PublicBookingPortal: React.FC = () => {
                       return (
                         <div
                           key={service.id}
-                          onClick={() => setSelectedService(service)}
+                          onClick={() => {setSelectedService(service);setSelectedProf(null);setSelectedTime('');}}
                           className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             isSelected
                               ? 'border-stone-900 bg-stone-50 ring-1 ring-stone-900 shadow-2xs'
@@ -452,7 +452,7 @@ export const PublicBookingPortal: React.FC = () => {
                   </div>
 
                   <div className="space-y-3">
-                    {tenantProfessionals.map((prof) => {
+                    {tenantProfessionals.filter(p=>selectedService&&p.services.includes(selectedService.id)).map((prof) => {
                       const isSelected = selectedProf?.id === prof.id;
                       return (
                         <div
@@ -528,8 +528,9 @@ export const PublicBookingPortal: React.FC = () => {
                       Horários Disponíveis com {selectedProf?.name}
                     </label>
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {availableSlots.length===0&&<p className="text-sm text-stone-600 col-span-full">Sem horários para esta duração e profissional nesta data. Escolha outro dia.</p>}
                       {availableSlots.map((slot) => {
-                        const isBooked = bookedSlots.includes(slot);
+                        const isBooked = false; // Only currently available starts are listed.
                         const isSelected = selectedTime === slot;
 
                         return (

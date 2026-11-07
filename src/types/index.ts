@@ -242,6 +242,15 @@ export interface Appointment {
   depositAmount?: number;
   resourceId?: string;
   resourceName?: string;
+  workflowVersion?: 1;
+  fulfillment?: {
+    operationKey: string;
+    completedAt: string;
+    materials: {itemId:string;name:string;unit:string;quantity:number;unitCost:number}[];
+    materialCostBRL: number;
+    commissionRate: number;
+    commissionBRL: number;
+  };
 }
 
 export interface FinancialTransaction {
@@ -256,7 +265,10 @@ export interface FinancialTransaction {
   appointmentId?: string;
   professionalId?: string;
   paymentMethod?: 'pix' | 'credit_card' | 'debit_card' | 'cash';
-  status: 'paid' | 'pending';
+  status: 'paid' | 'pending' | 'void';
+  operationKey?: string;
+  settlementKey?: string;
+  kind?: 'forecast' | 'payment' | 'commission';
 }
 
 export interface PackagePlan {

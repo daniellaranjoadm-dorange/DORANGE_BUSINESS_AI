@@ -129,9 +129,10 @@ export function publicTenant(t:any) { const keys=['id','slug','tradeName','city'
 export function publicBooking(req:Request,res:Response) {
   const t=db.get('tenants').find(t=>t.slug===req.params.slug && ['active','trial'].includes(t.status));
   if(!t){res.status(404).json({error:'Estabelecimento não encontrado'});return;}
-  const services=db.get('services').filter(s=>s.tenantId===t.id&&s.active).map(({id,name,category,description,durationMinutes,price,imageUrl,professionalIds,active})=>({id,name,category,description,durationMinutes,price,imageUrl,professionalIds,active}));
+  const services=db.get('services').filter(s=>s.tenantId===t.id&&s.active&&db.get('professionals').some(p=>p.tenantId===t.id&&p.active&&p.services.includes(s.id))).map(({id,name,category,description,durationMinutes,price,imageUrl,professionalIds,active})=>({id,name,category,description,durationMinutes,price,imageUrl,professionalIds,active}));
   const professionals=db.get('professionals').filter(p=>p.tenantId===t.id&&p.active).map(({id,name,role,services,schedule,avatarUrl})=>({id,name,role,services,schedule,avatarUrl}));
-  const appointments=db.get('appointments').filter(a=>a.tenantId===t.id&&a.date===req.query.date&&a.status!=='cancelled').map(({time,durationMinutes,professionalId})=>({time,durationMinutes,professionalId}));
+  const appointments=db.get('appointments').filter(a=>a.tenantId===t.id&&a.date===req.query.date&&!['cancelled','no_show'].includes(a.status)).map(({time,durationMinutes,professionalId})=>({time,durationMinutes,professionalId}));
+  const blockedTimes=db.get('blockedTimes').filter(b=>b.tenantId===t.id&&b.date===req.query.date).map(({professionalId,startTime,endTime})=>({professionalId,startTime,endTime}));
   const portfolio=db.get('portfolio').filter(p=>p.tenantId===t.id&&p.publishedToPortal).map(({id,title,category,imageUrl,description})=>({id,title,category,imageUrl,description}));
-  res.json({tenant:publicTenant(t),services,professionals,appointments,portfolio});
+  res.json({tenant:publicTenant(t),services,professionals,appointments,blockedTimes,portfolio});
 }
