@@ -1,27 +1,37 @@
-{
-  "id": "/",
-  "name": "D'OR@NGE BUSINESS AI",
-  "short_name": "D'OR@NGE",
-  "description": "Plataforma SaaS MultiBusiness White-Label de Gestão e Agendamento Inteligente.",
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "orientation": "portrait",
-  "theme_color": "#17191F",
-  "background_color": "#F8F9FB",
-  "categories": ["business", "beauty", "productivity"],
-  "icons": [
-    {
-      "src": "/icon.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    }
-  ]
+﻿{
+    "id":  "/",
+    "name":  "D\u0027OR@NGE BUSINESS AI",
+    "short_name":  "D\u0027OR@NGE",
+    "description":  "Plataforma SaaS MultiBusiness White-Label de Gestao e Agendamento Inteligente.",
+    "start_url":  "/",
+    "scope":  "/",
+    "display":  "standalone",
+    "orientation":  "portrait",
+    "theme_color":  "#17191F",
+    "background_color":  "#F8F9FB",
+    "categories":  [
+                       "business",
+                       "beauty",
+                       "productivity"
+                   ],
+    "icons":  [
+                  {
+                      "purpose":  "any",
+                      "type":  "image/png",
+                      "sizes":  "192x192",
+                      "src":  "/icon-192.png"
+                  },
+                  {
+                      "purpose":  "any",
+                      "type":  "image/png",
+                      "sizes":  "512x512",
+                      "src":  "/icon-512.png"
+                  },
+                  {
+                      "purpose":  "maskable",
+                      "type":  "image/png",
+                      "sizes":  "512x512",
+                      "src":  "/icon-maskable-512.png"
+                  }
+              ]
 }

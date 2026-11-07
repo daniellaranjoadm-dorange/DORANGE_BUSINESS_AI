@@ -51,9 +51,9 @@ export const PWAInstallButton: React.FC = () => {
                 </button>
               </div>
               <p className="text-xs text-stone-600 leading-relaxed space-y-2 mb-4">
-                <span className="block">1. Toque no ícone de <strong>Compartilhar</strong> (quadrado com seta para cima) na barra inferior do Safari.</span>
-                <span className="block">2. Role para baixo e selecione <strong>Adicionar à Tela de Início</strong>.</span>
-                <span className="block">3. Toque em <strong>Adicionar</strong> no topo direito.</span>
+                <span className="block">1. Toque no ícone de <strong>Compartilhar</strong> no Safari.</span>
+                <span className="block">2. Selecione <strong>Adicionar à Tela de Início</strong>.</span>
+                <span className="block">3. Toque em <strong>Adicionar</strong> para confirmar.</span>
               </p>
               <button
                 onClick={() => setShowIOSGuide(false)}
