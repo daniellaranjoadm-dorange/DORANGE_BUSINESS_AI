@@ -20,7 +20,7 @@ import { formatCurrencyBRL, formatDateBR } from '../utils/validators';
 import { DOrangeBrand } from '../design-system/DOrangeBrand';
 
 export const SuperAdminView: React.FC = () => {
-  const { tenants, appointments, updateTenant, auditLogs } = useApp();
+  const { tenants, appointments, updateTenant, auditLogs, subscriptionPlans } = useApp();
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -152,50 +152,49 @@ export const SuperAdminView: React.FC = () => {
               Distribuição de recursos por nível de contratação
             </p>
           </div>
-          <span className="text-xs font-semibold bg-stone-100 text-stone-700 px-2.5 py-1 rounded-lg">
-            Taxa de Churn: 0.0%
-          </span>
+          <span className="text-xs text-[#667085]">Planos conforme cadastro da plataforma</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-2xl border border-[#E6E8EC] bg-[#F8F9FB] space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-xs uppercase text-[#667085]">Plano Free</span>
-              <span className="text-xs font-bold text-[#17191F]">R$ 0/mês</span>
-            </div>
-            <p className="text-xs text-[#667085]">Para profissionais iniciantes experimentarem o agendamento inteligente.</p>
-            <ul className="text-[11px] text-stone-600 space-y-1 pt-1">
-              <li>• Até 30 agendamentos/mês</li>
-              <li>• 1 Profissional</li>
-              <li>• Marca D'OR@NGE discreta no rodapé</li>
-            </ul>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {subscriptionPlans.map((plan) => (
+            <div
+              key={plan.id}
+              className={`p-4 rounded-2xl border space-y-3 ${
+                plan.id === 'pro'
+                  ? 'border-[#C5A46D] bg-[#C5A46D]/5'
+                  : 'border-[#E6E8EC] bg-[#F8F9FB]'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-xs uppercase text-[#17191F]">
+                  Plano {plan.name}
+                </span>
+                <span className="text-xs font-bold text-[#17191F]">
+                  {formatCurrencyBRL(plan.priceMonthly)}/mês
+                </span>
+              </div>
 
-          <div className="p-4 rounded-2xl border border-[#C5A46D] bg-[#C5A46D]/5 space-y-2 relative">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-xs uppercase text-amber-900">Plano Pro</span>
-              <span className="text-xs font-bold text-[#17191F]">R$ 99/mês</span>
-            </div>
-            <p className="text-xs text-[#667085]">Para profissionais autônomos com alto fluxo de atendimentos.</p>
-            <ul className="text-[11px] text-stone-700 space-y-1 pt-1">
-              <li>• Agendamentos ilimitados</li>
-              <li>• Assistente D'OR@NGE com IA completa</li>
-              <li>• Domínio personalizado /slug próprio</li>
-            </ul>
-          </div>
+              <div className="text-xs text-[#667085] space-y-1">
+                <p>
+                  {plan.maxProfessionals} profissional(is)
+                </p>
+                <p>
+                  {plan.appointmentsLimit >= 9999
+                    ? 'Agendamentos ilimitados'
+                    : `Até ${plan.appointmentsLimit} agendamentos/mês`}
+                </p>
+                <p>{plan.aiCreditsLimit} créditos de IA/mês</p>
+              </div>
 
-          <div className="p-4 rounded-2xl border border-[#E6E8EC] bg-[#F8F9FB] space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-xs uppercase text-[#667085]">Plano Studio</span>
-              <span className="text-xs font-bold text-[#17191F]">R$ 199/mês</span>
+              <ul className="text-[11px] text-stone-700 space-y-1 pt-1">
+                {plan.features.slice(0, 4).map((feature, index) => (
+                  <li key={`${plan.id}-${index}`}>
+                    • {feature}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <p className="text-xs text-[#667085]">Para salões com múltiplas profissionais, recepcionista e comissões.</p>
-            <ul className="text-[11px] text-stone-600 space-y-1 pt-1">
-              <li>• Equipe ilimitada & cálculo de repasse</li>
-              <li>• Gestão avançada de estoque</li>
-              <li>• Suporte prioritário via WhatsApp</li>
-            </ul>
-          </div>
+          ))}
         </div>
       </div>
 
