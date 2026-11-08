@@ -13,3 +13,14 @@ evidencias/
 *.backup*
 *.lock.tmp
 .DS_Store
+
+# DORANGE - dados locais protegidos
+database.json
+**/database.json
+db.sqlite3
+**/db.sqlite3
+*.sqlite
+*.sqlite3
+*.db
+*.pem
+*.key

@@ -1,9 +1,15 @@
-import React, { useState } from "react";
+import { authenticatedFetch } from "../utils/authenticatedFetch";
+import React, { useRef, useState } from "react";
+import {
+  parseFinancialCommand,
+  type FinancialCommandDraft,
+} from "../utils/aiFinancialCommands";
+import AiFinancialPreview from "./AiFinancialPreview";
 import { useApp, AppTab } from "../context/AppContext";
 import { Send, ArrowUpRight, LoaderCircle, Sparkles } from "lucide-react";
 import { MarketBenchmarkModal } from "./MarketBenchmarkModal";
 export function AiAssistantView() {
-  const { currentTenant, currentSegment, setActiveTab } = useApp();
+  const { currentTenant, currentSegment, setActiveTab, syncAiFinancialTransaction } = useApp();
   const [messages, setMessages] = useState<
     {
       role: "user" | "assistant";
@@ -21,13 +27,161 @@ export function AiAssistantView() {
   const [external, setExternal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [pricing, setPricing] = useState(false);
+  const [pendingFinancialDraft, setPendingFinancialDraft] =
+    useState<FinancialCommandDraft | null>(null);
+  const [financialKey, setFinancialKey] = useState("");
+  const [financialOperationDate, setFinancialOperationDate] = useState("");
+  const [financialSaving, setFinancialSaving] = useState(false);
+  const [financialError, setFinancialError] = useState("");
+  const financialLock = useRef(false);
+
+  const confirmFinancial = async () => {
+    if (
+      financialLock.current ||
+      !pendingFinancialDraft ||
+      !financialKey
+    ) return;
+
+    if (!currentTenant?.id) {
+      setFinancialError("Selecione uma empresa antes de confirmar.");
+      return;
+    }
+
+    financialLock.current = true;
+    setFinancialSaving(true);
+    setFinancialError("");
+
+    const draft = pendingFinancialDraft;
+    const tenantId = currentTenant.id;
+    const key = financialKey;
+    const date = financialOperationDate;
+
+    try {
+      const response = await authenticatedFetch(
+        "/api/ai/financial/confirm",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tenantId,
+            type: draft.type,
+            description: draft.description,
+            amount: draft.amount,
+            date: draft.date || date,
+            operationKey: key,
+          }),
+        }
+      );
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const fallback: Record<number, string> = {
+          400: "Dados financeiros invalidos. Revise o lancamento.",
+          401: "Sessao expirada. Entre novamente.",
+          403: "Sem permissao para registrar nesta empresa.",
+          409: "Conflito: esta chave pertence a outro lancamento.",
+        };
+
+        throw new Error(
+          fallback[response.status] ||
+          result.error ||
+          "Nao foi possivel confirmar. Tente novamente."
+        );
+      }
+
+      if (
+        (response.status !== 200 && response.status !== 201) ||
+        result.success !== true ||
+        !result.transaction ||
+        result.transaction.tenantId !== tenantId
+      ) {
+        throw new Error(
+          "Resposta financeira inesperada. Confira o financeiro antes de tentar novamente."
+        );
+      }
+
+      syncAiFinancialTransaction(result.transaction);
+      setPendingFinancialDraft(null);
+      setFinancialKey("");
+      setFinancialOperationDate("");
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text:
+            (result.created
+              ? "Lancamento financeiro registrado com sucesso."
+              : "Lancamento ja registrado anteriormente.") +
+            "\nTipo: " +
+            (draft.type === "expense" ? "Despesa" : "Receita") +
+            "\nDescricao: " +
+            draft.description +
+            "\nValor: " +
+            new Intl.NumberFormat("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }).format(draft.amount) +
+            "\nSituacao: " +
+            result.transaction.status +
+            "\nIdentificador: " +
+            result.transaction.id,
+          source: "local",
+        },
+      ]);
+    } catch (error) {
+      setFinancialError(
+        error instanceof Error
+          ? error.message
+          : "Falha de comunicacao. Confira o financeiro antes de tentar novamente."
+      );
+    } finally {
+      financialLock.current = false;
+      setFinancialSaving(false);
+    }
+  };
+
   const send = async (text = input) => {
-    if (busy || !text.trim()) return;
+    if (busy || financialLock.current || !text.trim()) return;
+
+    const financialDraft = parseFinancialCommand(text);
+
+    if (financialDraft) {
+      setInput("");
+      setPendingFinancialDraft(financialDraft);
+      const operationNow = new Date();
+      setFinancialOperationDate([
+        operationNow.getFullYear(),
+        String(operationNow.getMonth() + 1).padStart(2, "0"),
+        String(operationNow.getDate()).padStart(2, "0"),
+      ].join("-"));
+      setFinancialKey(
+        "ai_fin_" + crypto.randomUUID().replace(/-/g, "")
+      );
+      setFinancialError("");
+
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", text },
+        {
+          role: "assistant",
+          text:
+            "Identifiquei uma solicitação financeira. " +
+            "Confira a prévia abaixo. " +
+            "Nenhum lançamento será gravado nesta etapa.",
+          source: "local",
+        },
+      ]);
+
+      return;
+    }
+
     setInput("");
     setBusy(true);
     setMessages((prev) => [...prev, { role: "user", text }]);
     try {
-      const response = await fetch("/api/ai/chat", {
+      const response = await authenticatedFetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -180,6 +334,30 @@ export function AiAssistantView() {
           </button>
         </div>
       </form>
+      {pendingFinancialDraft && (
+        <AiFinancialPreview
+          draft={pendingFinancialDraft}
+          onConfirm={confirmFinancial}
+          saving={financialSaving}
+          error={financialError}
+          onCancel={() => {
+            if (financialLock.current) return;
+            setPendingFinancialDraft(null);
+            setFinancialKey("");
+      setFinancialOperationDate("");
+            setFinancialError("");
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                text: "Operação financeira cancelada. Nenhum dado foi gravado.",
+                source: "local",
+              },
+            ]);
+          }}
+        />
+      )}
       <MarketBenchmarkModal
         isOpen={pricing}
         onClose={() => setPricing(false)}

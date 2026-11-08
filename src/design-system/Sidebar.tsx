@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AppTab } from '../context/AppContext';
 import { 
-  LayoutDashboard, 
+  LayoutDashboard,
+  ChartNoAxesCombined,
   Calendar, 
   Users, 
   Image as ImageIcon,
@@ -93,6 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'Gestão',
       items: [
         { id: 'financial', label: 'Financeiro', icon: DollarSign },
+        { id: 'intelligence-bi', label: 'Intelligence BI', icon: ChartNoAxesCombined },
         { 
           id: 'inventory', 
           label: 'Estoque', 

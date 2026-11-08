@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
-  LayoutDashboard, 
+  LayoutDashboard,
+  ChartNoAxesCombined,
   Calendar, 
   Users, 
   Megaphone, 
@@ -41,6 +42,7 @@ export const MobileBottomNav: React.FC = () => {
   const moreTabs = [
     { id: 'catalog', label: 'Catálogo de Serviços', icon: Package },
     { id: 'financial', label: 'Financeiro & Comissões', icon: DollarSign },
+    { id: 'intelligence-bi', label: 'Intelligence BI', icon: ChartNoAxesCombined },
     { id: 'inventory', label: 'Estoque de Insumos', icon: Boxes },
     { id: 'packages', label: 'Pacotes & Assinaturas', icon: Layers },
     { id: 'portfolio', label: 'Portfólio de Trabalhos', icon: ImageIcon },

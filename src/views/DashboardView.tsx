@@ -29,6 +29,7 @@ import { OnboardingChecklist } from '../components/OnboardingChecklist';
 import { Appointment } from '../types';
 import { businessInsights, localDateKey } from '../utils/businessInsights';
 import { BusinessPriorities } from '../components/BusinessPriorities';
+import { QuickOperationsPanel } from '../components/QuickOperationsPanel';
 
 export const DashboardView: React.FC = () => {
   const { 
@@ -178,13 +179,11 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      <BusinessPriorities insights={insights} onConfirm={()=>insights.confirmations.length?setSelectedAppForWhatsApp(insights.confirmations[0]):setActiveTab('calendar')} onCalendar={()=>setActiveTab('calendar')} onFinancial={()=>setActiveTab('financial')} onInventory={()=>setActiveTab('inventory')} />
 
-      {/* Checklist de Ativação do Salão com Assistente de IA */}
-      <OnboardingChecklist />
+
 
       {/* 2. Grid de Métricas Principais (Cards Compactos & Valores Tabulares) */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         
         {/* 1. Atendimentos Hoje */}
         <div className="bg-white p-4 rounded-2xl border border-[#E6E8EC] shadow-2xs">
@@ -302,6 +301,13 @@ export const DashboardView: React.FC = () => {
 
       </div>
 
+      <QuickOperationsPanel onNavigate={setActiveTab} />
+
+      <BusinessPriorities insights={insights} onConfirm={()=>insights.confirmations.length?setSelectedAppForWhatsApp(insights.confirmations[0]):setActiveTab('calendar')} onCalendar={()=>setActiveTab('calendar')} onFinancial={()=>setActiveTab('financial')} onInventory={()=>setActiveTab('inventory')} />
+
+      {/* Checklist de Ativação do Salão com Assistente de IA */}
+      <OnboardingChecklist />
+
       {/* 3. Bloco Principal: Agenda do Dia & Gráficos / Alertas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -412,24 +418,46 @@ export const DashboardView: React.FC = () => {
               <span className="font-bold text-xs text-[#17191F]">Volume Financeiro na Semana (BRL)</span>
               <span className="text-[10px] text-[#667085]">Últimos 7 dias</span>
             </div>
-            <div className="grid grid-cols-7 gap-2 items-end h-24 pt-4">
-              {weekDays.map((d) => {
-                const heightPct = Math.max(d.amount>0?4:0, Math.round((d.amount / maxDayAmount) * 100));
-                return (
-                  <div key={d.day} className="flex flex-col items-center gap-1.5 h-full justify-end">
-                    <div
-                      className="w-full rounded-t-md bg-stone-900 hover:bg-amber-600 transition-all relative group cursor-pointer"
-                      style={{ height: `${heightPct}%` }}
-                    >
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[9px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-10 pointer-events-none">
-                        {formatCurrencyBRL(d.amount)}
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-semibold text-[#667085]">{d.day}</span>
-                  </div>
-                );
-              })}
-            </div>
+            <div className="grid grid-cols-7 gap-1.5 sm:gap-3 items-end">
+  {weekDays.map((d) => {
+    const heightPct = d.amount > 0
+      ? Math.max(8, Math.round((d.amount / maxDayAmount) * 100))
+      : 0;
+
+    return (
+      <div key={d.date} className="flex flex-col items-center min-w-0 gap-2">
+        <span
+          className="text-[9px] sm:text-[10px] font-semibold text-[#17191F] tabular-nums text-center"
+          title={formatCurrencyBRL(d.amount)}
+        >
+          {d.amount > 0 ? formatCurrencyBRL(d.amount) : 'R$ 0'}
+        </span>
+
+        <div className="h-28 w-full flex items-end justify-center bg-stone-50 rounded-lg overflow-hidden">
+          {d.amount > 0 ? (
+            <div
+              className="w-full max-w-12 bg-amber-600 hover:bg-amber-700 rounded-t-md transition-colors"
+              style={{ height: `${heightPct}%` }}
+              role="img"
+              aria-label={`${d.day}: ${formatCurrencyBRL(d.amount)} recebidos`}
+              title={`${d.date}: ${formatCurrencyBRL(d.amount)}`}
+            />
+          ) : (
+            <div
+              className="w-full border-t-2 border-dashed border-stone-300"
+              role="img"
+              aria-label={`${d.day}: sem recebimentos`}
+            />
+          )}
+        </div>
+
+        <span className="text-[10px] font-semibold text-[#667085]">
+          {d.day}
+        </span>
+      </div>
+    );
+  })}
+</div>
           </div>
         </div>
 

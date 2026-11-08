@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "../utils/authenticatedFetch";
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
 import { X, FileText, Check, LoaderCircle, ArrowLeft } from "lucide-react";
@@ -36,7 +37,7 @@ export const CatalogueImportModal: React.FC<{
     try {
       let parsed: ImportItem[];
       if (useAI) {
-        const response = await fetch("/api/ai/parse-catalogue", {
+        const response = await authenticatedFetch("/api/ai/parse-catalogue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -73,7 +74,7 @@ export const CatalogueImportModal: React.FC<{
       const chosen = selected.map((i) => items[i]);
       if (!chosen.length || chosen.some((i) => !isImportItemValid(i)))
         throw Error("Revise nome, preço e duração dos itens selecionados.");
-      const response = await fetch("/api/catalogue/import", {
+      const response = await authenticatedFetch("/api/catalogue/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenantId: currentTenant?.id, items: chosen }),

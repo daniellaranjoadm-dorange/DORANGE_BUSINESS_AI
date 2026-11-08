@@ -33,15 +33,20 @@ function Start-LocalApp {
  $cfg=Read-LocalConfig
  $url="http://127.0.0.1:$($cfg.port)"
  $live=$false
+ $occupied=@(Get-NetTCPConnection -LocalPort $cfg.port -State Listen -ErrorAction SilentlyContinue)
  if(Test-Path -LiteralPath $pidFile){
   $savedPid=0
   if([int]::TryParse(([IO.File]::ReadAllText($pidFile).Trim()),[ref]$savedPid)){
    $p=Get-CimInstance Win32_Process -Filter "ProcessId=$savedPid"
-   $live=$p -and $p.Name -eq 'node.exe' -and $p.CommandLine -match 'scripts[/\\]start-local\.ts'
+   $live=[bool](
+    $p -and
+    $p.Name -eq 'node.exe' -and
+    $p.CommandLine -match 'scripts[/\\]start-local\.ts' -and
+    @($occupied | Where-Object { $_.OwningProcess -eq $savedPid }).Count -gt 0
+   )
   }
  }
  if(!$live){
-  $occupied=@(Get-NetTCPConnection -LocalPort $cfg.port -State Listen -ErrorAction SilentlyContinue)
   if($occupied.Count -gt 0){
    throw "Porta $($cfg.port) ocupada pelo processo $($occupied[0].OwningProcess). Nenhum novo servidor foi iniciado."
   }

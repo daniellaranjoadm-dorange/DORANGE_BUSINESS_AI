@@ -30,7 +30,8 @@ import {
 import { BUSINESS_SEGMENTS, DEFAULT_SUBSCRIPTION_PLANS } from '../data/businessSegments';
 
 export type AppTab = 
-  | 'dashboard' 
+  | 'dashboard'
+  | 'intelligence-bi'
   | 'calendar' 
   | 'catalog' 
   | 'customers' 
@@ -54,6 +55,7 @@ interface AppContextType {
   appointments: Appointment[];
   customers: Customer[];
   financialTransactions: FinancialTransaction[];
+  syncAiFinancialTransaction: (transaction: FinancialTransaction) => void;
   inventory: InventoryItem[];
   inventoryMovements: InventoryMovement[];
   marketingPosts: MarketingPost[];
@@ -606,6 +608,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return created;
   };
 
+  const syncAiFinancialTransaction = (
+    transaction: FinancialTransaction
+  ): void => {
+    if (
+      !currentTenant?.id ||
+      transaction.tenantId !== currentTenant.id ||
+      !transaction.id
+    ) {
+      return;
+    }
+
+    setFinancialTransactions((previous) => {
+      const existingIndex = previous.findIndex(
+        (item) => item.id === transaction.id
+      );
+
+      if (existingIndex === -1) {
+        return [transaction, ...previous];
+      }
+
+      return previous.map((item, index) =>
+        index === existingIndex ? transaction : item
+      );
+    });
+  };
   const createFinancialTransaction = async (data: any): Promise<FinancialTransaction> => {
     const res = await authFetch('/api/financial', {
       method: 'POST',
@@ -829,6 +856,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         appointments,
         customers,
         financialTransactions,
+        syncAiFinancialTransaction,
         inventory,
         inventoryMovements,
         marketingPosts,

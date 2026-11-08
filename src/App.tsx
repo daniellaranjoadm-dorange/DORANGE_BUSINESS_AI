@@ -28,6 +28,7 @@ import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 const CalendarView=React.lazy(()=>import('./views/CalendarView').then(module=>({default:module.CalendarView})));
 const CatalogView=React.lazy(()=>import('./views/CatalogView').then(module=>({default:module.CatalogView})));
 const CustomersView=React.lazy(()=>import('./views/CustomersView').then(module=>({default:module.CustomersView})));
+const IntelligenceBIView=React.lazy(()=>import('./views/IntelligenceBIView').then(module=>({default:module.IntelligenceBIView})));
 const FinancialView=React.lazy(()=>import('./views/FinancialView').then(module=>({default:module.FinancialView})));
 const AiAssistantView=React.lazy(()=>import('./views/AiAssistantView').then(module=>({default:module.AiAssistantView})));
 const SettingsView=React.lazy(()=>import('./views/SettingsView').then(module=>({default:module.SettingsView})));
@@ -80,6 +81,7 @@ const MainAppContent: React.FC = () => {
         <main key={currentTenant?.id} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-10 overflow-x-hidden">
           <React.Suspense fallback={<p role="status" className="p-8 text-sm text-stone-500">Abrindo módulo…</p>}>
           {activeTab === 'dashboard' && <DashboardView />}
+          {activeTab === 'intelligence-bi' && <IntelligenceBIView />}
           {activeTab === 'calendar' && <CalendarView />}
           {activeTab === 'catalog' && <CatalogView />}
           {activeTab === 'customers' && <CustomersView />}

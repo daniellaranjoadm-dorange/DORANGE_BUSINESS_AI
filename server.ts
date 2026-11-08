@@ -1,3 +1,4 @@
+import { createConfirmedAiFinancialTransaction, FinancialOperationConflict } from './server/aiFinancialPersistence.js';
 import {withinWorkingHours,validScheduleDate} from './src/utils/scheduling.js';
 import {checkoutSnapshot,recordPayment,completeAttendance,settlePayable,WorkflowError} from './server/attendance.js';
 import {businessInsights,localDateKey} from './src/utils/businessInsights.js';
@@ -1236,6 +1237,57 @@ app.post('/api/portfolio', (req: Request, res: Response) => {
 });
 
 // ==========================================
+app.post(
+  '/api/ai/financial/confirm',
+  requireAuth,
+  enforceTenantIsolation,
+  requireRoles('superadmin', 'owner', 'manager'),
+  (req: AuthenticatedRequest, res: Response) => {
+    const tenantId = req.resolvedTenantId;
+    const user = req.user;
+
+    if (!tenantId || !user) {
+      res.status(403).json({
+        error: 'Contexto de autenticação inválido.'
+      });
+      return;
+    }
+
+    try {
+      const result = createConfirmedAiFinancialTransaction(
+        db,
+        req.body,
+        tenantId,
+        user.id,
+        user.role
+      );
+
+      res.status(result.created ? 201 : 200).json({
+        success: true,
+        created: result.created,
+        transaction: result.transaction
+      });
+    } catch (error) {
+      if (error instanceof FinancialOperationConflict) {
+        res.status(409).json({ error: error.message });
+        return;
+      }
+
+      if (error instanceof Error && (
+        error.message.includes('inválid') ||
+        error.message.includes('inexistente') ||
+        error.message.includes('obrigatório')
+      )) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
+      res.status(500).json({
+        error: 'Falha ao registrar operação financeira.'
+      });
+    }
+  }
+);
 // 11. FINANCEIRO & FLUXO DE CAIXA
 // ==========================================
 
@@ -1630,7 +1682,7 @@ Gere uma configuração completa de inicialização em JSON:
 // ==========================================
 
 // Chat com Assistente D'OR@NGE AI com suporte a ferramentas estruturadas
-app.post('/api/ai/chat',rateLimit(20,60000),async(req:Request,res:Response)=>{
+app.post('/api/ai/chat',requireAuth,enforceTenantIsolation,requireRoles('superadmin','owner','manager'),rateLimit(20,60000),async(req:Request,res:Response)=>{
  const {message,tenantId,useAI}=req.body;
  if(typeof message!=='string'||!message.trim()||message.length>4000){res.status(400).json({error:'Envie uma mensagem de até 4 mil caracteres.'});return;}
  const tenant=db.get('tenants').find(t=>t.id===tenantId);
@@ -1645,7 +1697,7 @@ app.post('/api/ai/chat',rateLimit(20,60000),async(req:Request,res:Response)=>{
 });
 
 // Importação com IA para múltiplos formatos (texto, CSV, PDF/tabela)
-app.post('/api/ai/parse-catalogue', rateLimit(10,60000), async (req: Request,res:Response)=>{
+app.post('/api/ai/parse-catalogue', requireAuth, enforceTenantIsolation, requireRoles('superadmin','owner','manager'), rateLimit(10,60000), async (req: Request,res:Response)=>{
  try {
   const {rawText,tenantId,useAI}=req.body;
   if(typeof rawText!=='string'||!rawText.trim()||rawText.length>50000){res.status(400).json({error:'Informe uma lista de até 50 mil caracteres.'});return;}
@@ -1664,7 +1716,7 @@ app.post('/api/ai/parse-catalogue', rateLimit(10,60000), async (req: Request,res
 });
 
 // All selected items commit together; no inferred prices, costs or profit margins.
-app.post('/api/catalogue/import', (req:Request,res:Response)=>{
+app.post('/api/catalogue/import', requireAuth, enforceTenantIsolation, requireRoles('superadmin','owner','manager'), (req:Request,res:Response)=>{
  const {tenantId,items}=req.body;
   const assigned=req.body.professionalIds||[];
   if(!Array.isArray(assigned)||assigned.some(id=>!db.get('professionals').some(p=>p.id===id&&p.tenantId===tenantId&&p.active))){res.status(400).json({error:'Selecione profissionais ativos desta empresa.'});return;}
@@ -1683,7 +1735,7 @@ app.post('/api/catalogue/import', (req:Request,res:Response)=>{
 });
 
 // Geração de cópias de marketing para redes sociais com IA (Gemini 3.8 Flash)
-app.post('/api/ai/generate-copy',rateLimit(10,60000),async(req:Request,res:Response)=>{
+app.post('/api/ai/generate-copy',requireAuth,enforceTenantIsolation,requireRoles('superadmin','owner','manager'),rateLimit(10,60000),async(req:Request,res:Response)=>{
  const {topic,tenantId,tone,useAI}=req.body;
  if(typeof topic!=='string'||!topic.trim()||topic.length>2000){res.status(400).json({error:'Informe um tema de até 2 mil caracteres.'});return;}
  const tenant=db.get('tenants').find(t=>t.id===tenantId);if(!tenant){res.status(400).json({error:'Escolha a empresa.'});return;}
