@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { BUSINESS_SEGMENTS } from '../data/businessSegments';
+import { SEGMENT_EXPANSIONS } from '../data/segmentExpansion';
 
 type Section = 'plans' | 'segments' | 'audit' | 'settings';
 
@@ -53,6 +54,12 @@ export const PlatformOperationsView: React.FC<{
       .includes(query.toLocaleLowerCase('pt-BR'))
   );
 
+  const filteredExpansions = SEGMENT_EXPANSIONS.filter(segment =>
+    [segment.name, segment.id, segment.family, ...segment.capabilities]
+      .join(' ')
+      .toLocaleLowerCase('pt-BR')
+      .includes(query.toLocaleLowerCase('pt-BR'))
+  );
   const filteredAudit = auditLogs.filter(entry =>
     JSON.stringify(entry)
       .toLocaleLowerCase('pt-BR')
@@ -183,6 +190,84 @@ export const PlatformOperationsView: React.FC<{
         </>
       )}
 
+      {section === 'segments' && (
+        <section className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className={panel}>
+              <p className="text-xs text-[#667085]">Segmentos operacionais</p>
+              <p className="mt-2 text-2xl font-bold">{segments.length}</p>
+            </div>
+            <div className={panel}>
+              <p className="text-xs text-[#667085]">Expansões mapeadas</p>
+              <p className="mt-2 text-2xl font-bold">{SEGMENT_EXPANSIONS.length}</p>
+            </div>
+            <div className={panel}>
+              <p className="text-xs text-[#667085]">Total no planejamento</p>
+              <p className="mt-2 text-2xl font-bold">
+                {segments.length + SEGMENT_EXPANSIONS.length}
+              </p>
+            </div>
+          </div>
+
+          <div className={panel}>
+            <h2 className="font-bold">Novos segmentos em planejamento</h2>
+            <p className="mt-2 text-sm text-[#667085]">
+              Registro informativo. Nenhum segmento abaixo está habilitado
+              para cadastro comercial por esta tela.
+            </p>
+
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredExpansions.map(segment => (
+                <article
+                  key={segment.id}
+                  className="rounded-xl border border-[#E6E8EC] p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold">{segment.name}</h3>
+                      <p className="mt-1 text-xs text-[#667085]">
+                        {segment.family} · {segment.id}
+                      </p>
+                    </div>
+                    <span className="rounded-lg bg-stone-100 px-2 py-1 text-xs font-semibold">
+                      {segment.status === 'planned'
+                        ? 'Planejado'
+                        : segment.status === 'development'
+                          ? 'Em desenvolvimento'
+                          : segment.status === 'pilot'
+                            ? 'Piloto'
+                            : 'Liberado'}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {segment.capabilities.map(capability => (
+                      <span
+                        key={capability}
+                        className="rounded-md bg-[#F8F9FB] px-2 py-1 text-[11px] text-[#667085]"
+                      >
+                        {capability}
+                      </span>
+                    ))}
+                  </div>
+
+                  {segment.requiresComplianceReview && (
+                    <p className="mt-3 text-xs font-semibold text-amber-700">
+                      Revisão de conformidade necessária antes da liberação.
+                    </p>
+                  )}
+                </article>
+              ))}
+            </div>
+
+            {filteredExpansions.length === 0 && (
+              <p className="mt-4 text-sm text-[#667085]">
+                Nenhuma expansão corresponde à pesquisa.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
       {section === 'audit' && (
         <div className={panel}>
           <div className="flex items-center gap-3 mb-4">
