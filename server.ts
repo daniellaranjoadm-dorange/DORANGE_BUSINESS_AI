@@ -47,7 +47,7 @@ import {
   rateLimit,
 } from './server/auth.js';
 
-dotenv.config();
+dotenv.config({ path: process.env.DOTENV_CONFIG_PATH || '.env' });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1577,7 +1577,7 @@ export async function startServer() {
   if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: process.env.DORANGE_STUDIO_DEMO === 'true' ? false : undefined },
       appType: 'spa',
     });
     app.use(vite.middlewares);

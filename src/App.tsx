@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {getBrandTheme} from './utils/brandTheme';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './design-system/Sidebar';
+import { PlatformAdminShell } from './design-system/PlatformAdminShell';
 import { SalonHeader } from './design-system/SalonHeader';
 import { DemoSwitcherModal } from './design-system/DemoSwitcherModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -30,7 +31,7 @@ const CustomersView=React.lazy(()=>import('./views/CustomersView').then(module=>
 const FinancialView=React.lazy(()=>import('./views/FinancialView').then(module=>({default:module.FinancialView})));
 const AiAssistantView=React.lazy(()=>import('./views/AiAssistantView').then(module=>({default:module.AiAssistantView})));
 const SettingsView=React.lazy(()=>import('./views/SettingsView').then(module=>({default:module.SettingsView})));
-const SuperAdminView=React.lazy(()=>import('./views/SuperAdminView').then(module=>({default:module.SuperAdminView})));
+
 const PublicBookingPortal=React.lazy(()=>import('./views/PublicBookingPortal').then(module=>({default:module.PublicBookingPortal})));
 const InventoryView=React.lazy(()=>import('./views/InventoryView').then(module=>({default:module.InventoryView})));
 const MarketingAiView=React.lazy(()=>import('./views/MarketingAiView').then(module=>({default:module.MarketingAiView})));
@@ -52,9 +53,10 @@ const MainAppContent: React.FC = () => {
 
   if(isLoading)return <p className="p-8">Carregando…</p>;
   if(!currentUser)return <LoginView/>;
+  if(currentUser.role === 'superadmin') return <PlatformAdminShell />;
   return (
     <div style={getBrandTheme(activeTab==='super-admin'?'#17191F':currentTenant?.primaryColor) as React.CSSProperties} className="tenant-workspace min-h-screen bg-[#F8F9FB] flex text-[#17191F] font-sans selection:bg-stone-200 selection:text-stone-900">
-      
+
       {/* 1. Sidebar Desktop Recolhível */}
       <Sidebar
         mobileOpen={isMobileMenuOpen}
@@ -67,7 +69,7 @@ const MainAppContent: React.FC = () => {
 
       {/* 2. Área Central de Trabalho */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        
+
         {/* Cabeçalho Focado no Salão da Manicure */}
         <SalonHeader
           onOpenMobileMenu={()=>setIsMobileMenuOpen(true)}
@@ -89,7 +91,7 @@ const MainAppContent: React.FC = () => {
           {activeTab === 'whatsapp' && <WhatsAppConfigView />}
           {activeTab === 'ai-assistant' && <AiAssistantView />}
           {activeTab === 'settings' && <SettingsView />}
-          {activeTab === 'super-admin' && <SuperAdminView />}
+
           </React.Suspense>
         </main>
       </div>

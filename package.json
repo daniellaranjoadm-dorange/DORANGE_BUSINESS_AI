@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit",
     "setup:local": "tsx scripts/init-local.ts",
     "check:publish": "node scripts/check-publish.mjs",
-    "start:local": "tsx scripts/start-local.ts"
+    "start:local": "tsx scripts/start-local.ts",
+    "dev:studio": "tsx studio-entry.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

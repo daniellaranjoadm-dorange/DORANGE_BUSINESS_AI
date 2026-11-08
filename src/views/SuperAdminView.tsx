@@ -86,7 +86,7 @@ export const SuperAdminView: React.FC = () => {
         {/* Salões Ativos */}
         <div className="bg-white p-5 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-2">
-            <span className="text-xs font-semibold">Salões na Plataforma</span>
+            <span className="text-xs font-semibold">Empresas na Plataforma</span>
             <Building2 className="w-4 h-4 text-[#C5A46D]" />
           </div>
           <div className="font-display font-bold text-3xl text-[#17191F] tabular-nums">
@@ -104,7 +104,7 @@ export const SuperAdminView: React.FC = () => {
             <DollarSign className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="font-display font-bold text-3xl text-emerald-800 tabular-nums">
-            {formatCurrencyBRL(metrics?.monthlyRecurringRevenueBRL || 198)}
+            {typeof metrics?.monthlyRecurringRevenueBRL === 'number' ? formatCurrencyBRL(metrics.monthlyRecurringRevenueBRL) : 'Não disponível'}
           </div>
           <p className="text-[11px] text-[#667085] mt-1">
             Assinaturas Pro & Studio ativas
