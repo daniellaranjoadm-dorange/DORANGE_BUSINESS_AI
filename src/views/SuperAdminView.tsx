@@ -90,24 +90,24 @@ export const SuperAdminView: React.FC = () => {
             <Building2 className="w-4 h-4 text-[#C5A46D]" />
           </div>
           <div className="font-display font-bold text-3xl text-[#17191F] tabular-nums">
-            {metrics?.totalTenants || tenants.length}
+            {metrics?.totalTenants ?? tenants.length}
           </div>
           <p className="text-[11px] text-emerald-700 font-medium mt-1">
-            {metrics?.activeTenants || tenants.filter(t => t.status === 'active').length} empresas ativas
+            {metrics?.activeTenants ?? tenants.filter(t => t.status === 'active').length} empresas ativas
           </p>
         </div>
 
         {/* MRR Recorrente */}
         <div className="bg-white p-5 rounded-2xl border border-[#E6E8EC] shadow-2xs">
           <div className="flex items-center justify-between text-[#667085] mb-2">
-            <span className="text-xs font-semibold">MRR (Receita Recorrente)</span>
+            <span className="text-xs font-semibold">MRR contratual estimado</span>
             <DollarSign className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="font-display font-bold text-3xl text-emerald-800 tabular-nums">
             {typeof metrics?.monthlyRecurringRevenueBRL === 'number' ? formatCurrencyBRL(metrics.monthlyRecurringRevenueBRL) : 'Não disponível'}
           </div>
           <p className="text-[11px] text-[#667085] mt-1">
-            Assinaturas Pro & Studio ativas
+            Projecao mensal dos planos de empresas ativas; nao representa pagamentos recebidos
           </p>
         </div>
 
@@ -118,7 +118,7 @@ export const SuperAdminView: React.FC = () => {
             <Activity className="w-4 h-4 text-stone-700" />
           </div>
           <div className="font-display font-bold text-3xl text-[#17191F] tabular-nums">
-            {metrics?.totalAppointments || appointments.length}
+            {metrics?.totalAppointments ?? appointments.length}
           </div>
           <p className="text-[11px] text-[#667085] mt-1">
             Validados sem conflito de agenda
@@ -132,10 +132,10 @@ export const SuperAdminView: React.FC = () => {
             <Sparkles className="w-4 h-4 text-[#C5A46D]" />
           </div>
           <div className="font-display font-bold text-3xl text-[#17191F] tabular-nums">
-            {metrics?.totalAiQueriesCount || 164}
+            {typeof metrics?.totalAiQueriesCount === "number" ? metrics.totalAiQueriesCount : "Não disponível"}
           </div>
           <p className="text-[11px] text-[#667085] mt-1">
-            Requisições com modelo gemini-3.8-flash
+            Consumo real ainda não consolidado pela API
           </p>
         </div>
 

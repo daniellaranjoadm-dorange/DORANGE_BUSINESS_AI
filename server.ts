@@ -237,6 +237,27 @@ app.post('/api/tenants', onboardingLimit, async (req,res,next)=>{
   }
 });
 app.patch('/api/tenants/:id', (req: AuthenticatedRequest, res: Response) => {
+  const actor = req.user;
+
+  if (!actor) {
+    res.status(401).json({ error: 'Autenticação necessária.' });
+    return;
+  }
+
+  if (!['superadmin', 'owner'].includes(actor.role)) {
+    res.status(403).json({ error: 'Perfil sem permissão para atualizar empresas.' });
+    return;
+  }
+
+  if (actor.role !== 'superadmin' && actor.tenantId !== req.params.id) {
+    res.status(403).json({ error: 'Acesso negado a outra empresa.' });
+    return;
+  }
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Dados de atualização inválidos.' });
+    return;
+  }
+
   if(req.body.slug!==undefined){
     const slug=req.body.slug;
     if(typeof slug!=='string'||!/^[a-z0-9](?:[a-z0-9-]{1,78}[a-z0-9])$/.test(slug)||['api','assets','login','admin','healthz','favicon'].includes(slug)){res.status(400).json({error:'Use um endereço de 3 a 80 letras minúsculas, números ou hífens.'});return;}
@@ -245,7 +266,37 @@ app.patch('/api/tenants/:id', (req: AuthenticatedRequest, res: Response) => {
   if(req.body.businessSegment && !BUSINESS_SEGMENTS[req.body.businessSegment as BusinessSegmentId]){res.status(400).json({error:'Segmento inválido'});return;}
   const allowed=['tradeName','slug','phone','whatsapp','city','state','address','logoUrl','coverUrl','primaryColor','secondaryColor','description','instagram','businessHours','bufferBetweenAppointmentsMinutes','serviceType','businessSegment','loyaltyProgramEnabled','loyaltyPointsPerReal','loyaltyRewardThreshold','loyaltyRewardDescription'];
   if(req.user?.role==='superadmin')allowed.push('planId','status');
+
+
+  if (req.body.planId !== undefined) {
+    if (req.user?.role !== 'superadmin') {
+      res.status(403).json({ error: 'Somente o Super Admin pode alterar planos.' });
+      return;
+    }
+
+    if (!['free', 'start', 'pro', 'studio'].includes(req.body.planId)) {
+      res.status(400).json({ error: 'Plano comercial inválido.' });
+      return;
+    }
+  }
+
+  if (req.body.status !== undefined) {
+    if (req.user?.role !== 'superadmin') {
+      res.status(403).json({ error: 'Somente o Super Admin pode alterar o status da empresa.' });
+      return;
+    }
+
+    if (!['active', 'trial', 'suspended'].includes(req.body.status)) {
+      res.status(400).json({ error: 'Status da empresa inválido.' });
+      return;
+    }
+  }
   req.body=Object.fromEntries(Object.entries(req.body).filter(([key])=>allowed.includes(key)));
+
+  if (Object.keys(req.body).length === 0) {
+    res.status(400).json({ error: 'Nenhum campo permitido informado.' });
+    return;
+  }
   let updatedTenant: Tenant | null = null;
   db.mutate((d) => {
     const idx = d.tenants.findIndex((t) => t.id === req.params.id);
@@ -260,7 +311,13 @@ app.patch('/api/tenants/:id', (req: AuthenticatedRequest, res: Response) => {
     return;
   }
 
-  db.logAudit(req.params.id, 'UPDATE_TENANT', 'Configurações de marca atualizadas');
+  db.logAudit(
+      req.params.id,
+      'UPDATE_TENANT',
+      `Configurações da empresa atualizadas por ${actor.role} ${actor.id}`,
+      actor.id,
+      actor.role
+    );
   res.json(updatedTenant);
 });
 
@@ -1227,12 +1284,29 @@ app.get('/api/admin/metrics', requireAuth, requireRoles('superadmin'), (_req: Au
   const trialTenants = tenants.filter((t) => t.status === 'trial').length;
   const totalAppointments = appointments.length;
 
-  const totalRevenueSaaS = tenants.reduce((acc, t) => {
-    if (t.planId === 'start') return acc + 39.9;
-    if (t.planId === 'pro') return acc + 79.9;
-    if (t.planId === 'studio') return acc + 149.9;
-    return acc;
-  }, 0);
+  // Projecao contratual, nao representa pagamentos recebidos.
+  // Somente empresas ativas entram na estimativa.
+  const configuredPlans = db.get('subscriptionPlans');
+  const plans = configuredPlans.length > 0
+    ? configuredPlans
+    : DEFAULT_SUBSCRIPTION_PLANS;
+
+  const planPrices = new Map(
+    plans.map((plan) => [plan.id, plan.priceMonthly])
+  );
+
+  const totalRevenueSaaS = tenants
+    .filter((tenant) => tenant.status === 'active')
+    .reduce((total, tenant) => {
+      const price = planPrices.get(tenant.planId);
+      return total + (
+        typeof price === 'number' &&
+        Number.isFinite(price) &&
+        price >= 0
+          ? price
+          : 0
+      );
+    }, 0);
 
   // Distribuição por segmento de negócio
   const segmentDistribution: Record<string, number> = {};
@@ -1247,8 +1321,9 @@ app.get('/api/admin/metrics', requireAuth, requireRoles('superadmin'), (_req: Au
     trialTenants,
     totalAppointments,
     monthlyRecurringRevenueBRL: Number(totalRevenueSaaS.toFixed(2)),
+    revenueMetricType: "contractual_estimate",
     annualRecurringRevenueBRL: Number((totalRevenueSaaS * 12).toFixed(2)),
-    totalAiQueriesCount: 342,
+    totalAiQueriesCount: null,
     baseCatalogCount: EXPANDED_BASE_CATALOG.length,
     planDistribution: {
       free: tenants.filter((t) => t.planId === 'free').length,
@@ -1278,18 +1353,79 @@ app.get('/api/admin/plans', (_req: Request, res: Response) => {
 });
 
 app.put('/api/admin/plans', requireAuth, requireRoles('superadmin'), (req: AuthenticatedRequest, res: Response) => {
-  const updatedPlans: SubscriptionPlan[] = req.body.plans;
-  if (!Array.isArray(updatedPlans)) {
-    res.status(400).json({ error: 'Formato inválido para planos.' });
+  const input: unknown = req.body?.plans;
+  const ids = ['free', 'start', 'pro', 'studio'] as const;
+
+  if (!Array.isArray(input) || input.length !== ids.length) {
+    res.status(400).json({ error: 'Informe os quatro planos comerciais.' });
     return;
   }
-  db.mutate((d) => {
+
+  const allowed = [
+    'id', 'name', 'priceMonthly', 'appointmentsLimit',
+    'maxProfessionals', 'aiCreditsLimit', 'features'
+  ];
+
+  const valid = input.every((plan: unknown) => {
+    if (!plan || typeof plan !== 'object' || Array.isArray(plan)) return false;
+
+    const p = plan as Record<string, unknown>;
+
+    if (Object.keys(p).some(key => !allowed.includes(key))) return false;
+    if (typeof p.id !== 'string' || !ids.some(id => id === p.id)) return false;
+    if (typeof p.name !== 'string' || !p.name.trim() || p.name.length > 100) return false;
+
+    if (typeof p.priceMonthly !== 'number' ||
+        !Number.isFinite(p.priceMonthly) ||
+        p.priceMonthly < 0 ||
+        !Number.isSafeInteger(Math.round(p.priceMonthly * 100)) ||
+        Math.abs(p.priceMonthly * 100 - Math.round(p.priceMonthly * 100)) > 1e-7) {
+      return false;
+    }
+
+    for (const key of ['appointmentsLimit', 'maxProfessionals', 'aiCreditsLimit']) {
+      const value = p[key];
+      if (typeof value !== 'number' ||
+          !Number.isSafeInteger(value) ||
+          value < 0) return false;
+    }
+
+    if (!Array.isArray(p.features) ||
+        p.features.length > 100 ||
+        p.features.some((feature: unknown) =>
+          typeof feature !== 'string' ||
+          !feature.trim() ||
+          feature.length > 200)) return false;
+
+    return true;
+  });
+
+  const uniqueIds = new Set<string>(
+    input.map((plan: { id: string }) => plan.id)
+  );
+
+  if (!valid || uniqueIds.size !== ids.length ||
+      !ids.every(id => uniqueIds.has(id))) {
+    res.status(400).json({ error: 'Planos comerciais inválidos.' });
+    return;
+  }
+
+  const updatedPlans = input as SubscriptionPlan[];
+
+  db.mutate(d => {
     d.subscriptionPlans = updatedPlans;
   });
-  db.logAudit('system', 'UPDATE_PLANS', 'Planos de assinatura comerciais atualizados pelo Super Admin');
+
+  db.logAudit(
+    'system',
+    'UPDATE_PLANS',
+    `Planos comerciais atualizados pelo Super Admin ${req.user?.id}`,
+    req.user?.id,
+    req.user?.role
+  );
+
   res.json({ success: true, plans: updatedPlans });
 });
-
 // Simulador de Rentabilidade SaaS (Super Admin)
 app.post('/api/admin/saas-simulation', requireAuth, requireRoles('superadmin'), (req: AuthenticatedRequest, res: Response) => {
   const p = req.body;
